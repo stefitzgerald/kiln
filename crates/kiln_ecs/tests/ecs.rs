@@ -289,7 +289,7 @@ proptest! {
         }
         prop_assert_eq!(w.entity_count(), model.len());
         for (e, a, b) in &model {
-            prop_assert_eq!(w.get::<A>(*e), Some(&A(*a)));
+            prop_assert_eq!(w.get::<A>(*e).map(|c| c.0), Some(*a));
             prop_assert_eq!(w.get::<B>(*e).map(|b| b.0), *b);
         }
         let with_b = model.iter().filter(|m| m.2.is_some()).count();

@@ -30,6 +30,9 @@ Prerequisites:
     workload) or the GNU toolchain (`rustup default stable-x86_64-pc-windows-gnu` with
     MinGW-w64 gcc on PATH).
 - A GPU and driver with **Vulkan 1.3**.
+- Linux only: the runtime libraries winit loads for windowing and keyboard input,
+  `libxkbcommon-x11-0` (X11) or `libxkbcommon0` (Wayland). Most desktop distributions
+  install these by default.
 - Optional: the [Vulkan SDK](https://vulkan.lunarg.com), for validation layers during
   development.
 

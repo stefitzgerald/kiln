@@ -1,9 +1,10 @@
 //! Renderer GPU tests (TC-GPU-02..08, TC-AST-08). Ignored by default; run with
 //! `cargo xtask gpu-test`. Re-render golden images with `cargo xtask bless-goldens`.
 //!
-//! Golden comparison: a pixel "differs" if any channel is off by more than 2; a test fails
-//! if more than 0.5% of pixels differ. On failure `target/golden-diff/<name>_{actual,diff}.png`
-//! are written for inspection.
+//! Golden comparison: a pixel "differs" if any channel is off by more than the golden's
+//! [`Tolerance`] (2 by default, 48 for textured goldens); a test fails if more than 0.5% of
+//! pixels differ. On failure `target/golden-diff/<name>_{actual,diff}.png` are written for
+//! inspection (CI uploads them as the `golden-diff` artifact).
 
 #![allow(clippy::unwrap_used, clippy::chunks_exact_to_as_chunks)]
 
@@ -71,8 +72,28 @@ fn linear_to_srgb8(c: f32) -> u8 {
     (s * 255.0 + 0.5) as u8
 }
 
+/// How closely a render must match its golden image.
+#[derive(Clone, Copy)]
+struct Tolerance {
+    /// Largest per-channel difference (0-255) for a pixel to still count as matching.
+    channel: u8,
+}
+
+impl Tolerance {
+    /// Flat shading, vertex colors and clears: implementations agree to within rounding.
+    const STRICT: Self = Self { channel: 2 };
+    /// Textured surfaces: mip selection and anisotropic filtering are implementation-defined,
+    /// so edges between texels blend differently across GPUs (measured up to 41 on Mesa
+    /// lavapipe vs AMD). Real regressions (missing or flipped textures, wrong colors) differ
+    /// by ~190 over large areas and still fail.
+    const FILTERED: Self = Self { channel: 48 };
+}
+
+/// Maximum fraction of pixels (in thousandths) allowed to exceed the channel tolerance.
+const MAX_BAD_PER_MILLE: usize = 5;
+
 /// Compare `actual` against `tests/assets/goldens/<name>.png` (or write it when blessing).
-fn check_golden(name: &str, actual: &Image) {
+fn check_golden(name: &str, actual: &Image, tolerance: Tolerance) {
     let path = root()
         .join("tests/assets/goldens")
         .join(format!("{name}.png"));
@@ -111,7 +132,7 @@ fn check_golden(name: &str, actual: &Image) {
             .max()
             .unwrap_or(0);
         let (x, y) = (i as u32 % actual.width, i as u32 / actual.width);
-        if d > 2 {
+        if d > tolerance.channel {
             bad += 1;
             diff.put_pixel(x, y, image::Rgba([255, 0, 255, 255]));
         } else {
@@ -119,7 +140,7 @@ fn check_golden(name: &str, actual: &Image) {
         }
     }
     let total = (actual.width * actual.height) as usize;
-    if bad * 1000 > total * 5 {
+    if bad * 1000 > total * MAX_BAD_PER_MILLE {
         let dir = root().join("target/golden-diff");
         std::fs::create_dir_all(&dir).unwrap();
         to_png(actual)
@@ -127,7 +148,8 @@ fn check_golden(name: &str, actual: &Image) {
             .unwrap();
         diff.save(dir.join(format!("{name}_diff.png"))).unwrap();
         panic!(
-            "golden `{name}` mismatch: {bad}/{total} pixels differ (> 0.5%); see {}",
+            "golden `{name}` mismatch: {bad}/{total} pixels differ by more than {} (> 0.5%); see {}",
+            tolerance.channel,
             dir.display()
         );
     }
@@ -199,7 +221,7 @@ fn tc_gpu_03_triangle() {
         br[2] > br[0] && br[2] > br[1],
         "bottom-right should be blue, got {br:?}"
     );
-    check_golden("triangle", &img);
+    check_golden("triangle", &img, Tolerance::STRICT);
     assert_clean(&r);
 }
 
@@ -244,7 +266,7 @@ fn tc_gpu_04_cube_depth() {
         "top face not lit: {top_face:?}"
     );
     assert_eq!(r.stats().draws, 1);
-    check_golden("cube_depth", &img);
+    check_golden("cube_depth", &img, Tolerance::STRICT);
     assert_clean(&r);
 }
 
@@ -337,7 +359,7 @@ fn tc_gpu_06_directional_light() {
         "lit side {right} vs shadow side {left}"
     );
     assert!(left > 0.0, "ambient keeps the dark side visible");
-    check_golden("sphere_lit", &img);
+    check_golden("sphere_lit", &img, Tolerance::STRICT);
     assert_clean(&r);
 }
 
@@ -417,7 +439,7 @@ fn tc_ast_08_textured_gltf() {
             .any(|p| p[0].abs_diff(p[2]) < 20 && p[0] < 90),
         "gray squares missing"
     );
-    check_golden("checker_cube", &img);
+    check_golden("checker_cube", &img, Tolerance::FILTERED);
     assert_clean(&r);
 }
 

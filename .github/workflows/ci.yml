@@ -64,7 +64,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            mesa-vulkan-drivers vulkan-validationlayers vulkan-tools xvfb
+            mesa-vulkan-drivers vulkan-validationlayers vulkan-tools xvfb \
+            libxkbcommon-x11-0
           vulkaninfo --summary
       - run: cargo xtask doctor
       - run: cargo xtask gpu-test
