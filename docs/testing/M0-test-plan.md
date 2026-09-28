@@ -133,10 +133,16 @@ Environment variables: `KILN_LOG` (log filter, e.g. `debug`), `KILN_VALIDATION`
 | — | `headless_resize` | Resize offscreen target | New size; zero size ignored |
 
 Golden images live in `tests/assets/goldens/`. A test fails if more than 0.5 % of pixels
-differ by more than 2 in any channel; diffs are written to `target/golden-diff/`.
-Goldens were blessed on an AMD RX 9070 XT. If lavapipe in CI differs beyond tolerance,
-download the `golden-diff` artifact, confirm the difference is rasterization noise, and
-widen the tolerance or bless per-platform. Do not bless blindly.
+differ by more than the golden's per-channel tolerance: **2** for untextured goldens
+(`triangle`, `cube_depth`, `sphere_lit`) and **48** for textured ones (`checker_cube`),
+because texture filtering (mip selection, anisotropy) is implementation-defined. Measured:
+Mesa lavapipe vs AMD differed by up to 41 on checker edges only. Diffs are written to
+`target/golden-diff/`, and CI uploads them as the `golden-diff` artifact.
+
+Goldens were blessed on an AMD RX 9070 XT and pass on lavapipe in CI. If a golden fails,
+download the artifact and look at `<name>_diff.png` (magenta = differing pixels) before
+changing anything. Only re-bless for intentional rendering changes, never to make noise
+go away.
 
 ## Manual suites
 
