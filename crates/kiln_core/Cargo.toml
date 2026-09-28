@@ -1,0 +1,20 @@
+[package]
+name = "kiln_core"
+description = "Kiln engine core: logging, generational handles, time"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+tracing.workspace = true
+tracing-subscriber.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true

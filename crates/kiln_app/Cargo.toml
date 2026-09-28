@@ -1,0 +1,21 @@
+[package]
+name = "kiln_app"
+description = "Kiln engine application framework: plugins, schedule, main loop"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+kiln_core.workspace = true
+kiln_ecs.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+

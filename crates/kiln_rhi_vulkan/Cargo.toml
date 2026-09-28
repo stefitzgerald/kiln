@@ -1,0 +1,24 @@
+[package]
+name = "kiln_rhi_vulkan"
+description = "Kiln engine Vulkan backend"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+kiln_rhi.workspace = true
+ash.workspace = true
+ash-window.workspace = true
+raw-window-handle.workspace = true
+gpu-allocator.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+

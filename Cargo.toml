@@ -1,0 +1,64 @@
+[workspace]
+resolver = "3"
+members = ["crates/*", "xtask"]
+default-members = ["crates/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/kiln-engine/kiln"
+authors = ["Kiln Contributors"]
+
+[workspace.dependencies]
+# Internal crates
+kiln_core = { path = "crates/kiln_core", version = "0.1.0" }
+kiln_math = { path = "crates/kiln_math", version = "0.1.0" }
+kiln_ecs = { path = "crates/kiln_ecs", version = "0.1.0" }
+kiln_app = { path = "crates/kiln_app", version = "0.1.0" }
+kiln_asset = { path = "crates/kiln_asset", version = "0.1.0" }
+kiln_scene = { path = "crates/kiln_scene", version = "0.1.0" }
+kiln_platform = { path = "crates/kiln_platform", version = "0.1.0" }
+kiln_rhi = { path = "crates/kiln_rhi", version = "0.1.0" }
+kiln_rhi_vulkan = { path = "crates/kiln_rhi_vulkan", version = "0.1.0" }
+kiln_render = { path = "crates/kiln_render", version = "0.1.0" }
+
+# External
+ash = { version = "0.38", default-features = false, features = ["loaded", "debug", "std"] }
+ash-window = "0.13"
+raw-window-handle = "0.6"
+winit = "0.30"
+gpu-allocator = { version = "0.28", default-features = false, features = ["vulkan", "std"] }
+glam = { version = "0.33", features = ["bytemuck"] }
+gltf = { version = "1.4", default-features = false, features = ["import", "utils", "names", "KHR_materials_unlit"] }
+image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
+naga = { version = "30", features = ["wgsl-in", "spv-out"] }
+bytemuck = { version = "1", features = ["derive"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+thiserror = "2"
+proptest = "1"
+criterion = { version = "0.8", default-features = false, features = ["cargo_bench_support"] }
+
+[workspace.lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+missing_docs = "warn"
+missing_debug_implementations = "warn"
+unreachable_pub = "warn"
+
+[workspace.lints.clippy]
+unwrap_used = "warn"
+dbg_macro = "warn"
+todo = "warn"
+undocumented_unsafe_blocks = "warn"
+
+[profile.dev]
+# Engine code is unusably slow at opt-level 0; keep debug info but optimize dependencies.
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 3
+
+[profile.release]
+debug = "line-tables-only"

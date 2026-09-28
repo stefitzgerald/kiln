@@ -1,0 +1,26 @@
+[package]
+name = "kiln"
+description = "Kiln: an open-source 3D game engine"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+readme = "../../README.md"
+keywords = ["gamedev", "engine", "vulkan", "3d"]
+categories = ["game-engines", "graphics", "rendering"]
+
+[lints]
+workspace = true
+
+[dependencies]
+kiln_core.workspace = true
+kiln_math.workspace = true
+kiln_ecs.workspace = true
+kiln_app.workspace = true
+kiln_asset.workspace = true
+kiln_scene.workspace = true
+kiln_platform.workspace = true
+kiln_render.workspace = true
+tracing.workspace = true
