@@ -1,0 +1,43 @@
+# cargo-deny configuration: https://embarkstudios.github.io/cargo-deny/
+# Run with `cargo deny check` (part of `cargo xtask ci`).
+
+[graph]
+all-features = false
+
+[advisories]
+# Fail on known vulnerabilities and on unmaintained/yanked crates in the graph.
+yanked = "deny"
+ignore = [
+    # ttf-parser is unmaintained (not a vulnerability). It is only reached through winit's
+    # Wayland client-side decorations (sctk-adwaita), which parse local system fonts to draw
+    # the title bar. Revisit when winit/sctk-adwaita switch parsers; the alternative is
+    # winit's `wayland-csd-adwaita-notitle` feature, which drops window titles on GNOME.
+    { id = "RUSTSEC-2026-0192", reason = "transitive via winit Wayland decorations; local fonts only" },
+]
+
+[licenses]
+# Permissive licenses compatible with shipping Kiln under MIT OR Apache-2.0.
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "0BSD",
+    "ISC",
+    "Zlib",
+    "Unicode-3.0",
+    "Unlicense",
+]
+confidence-threshold = 0.9
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+# Path dependencies inside the workspace carry versions, so this only flags real wildcards.
+allow-wildcard-paths = true
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]

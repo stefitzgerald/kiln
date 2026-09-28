@@ -78,7 +78,12 @@ impl std::fmt::Debug for Swapchain {
 
 impl Swapchain {
     /// Create a swapchain of roughly `extent` (clamped to what the surface allows).
-    pub fn new(ctx: &GpuContext, surface: Surface, extent: vk::Extent2D, mode: PresentMode) -> VkResult<Self> {
+    pub fn new(
+        ctx: &GpuContext,
+        surface: Surface,
+        extent: vk::Extent2D,
+        mode: PresentMode,
+    ) -> VkResult<Self> {
         let mut sc = Self {
             ctx: ctx.clone(),
             raw: vk::SwapchainKHR::null(),
@@ -108,9 +113,15 @@ impl Swapchain {
         // SAFETY: plain queries on live objects.
         let (caps, formats, modes) = unsafe {
             (
-                surface_fn.get_physical_device_surface_capabilities(pd, surface).ctx("surface capabilities")?,
-                surface_fn.get_physical_device_surface_formats(pd, surface).ctx("surface formats")?,
-                surface_fn.get_physical_device_surface_present_modes(pd, surface).ctx("present modes")?,
+                surface_fn
+                    .get_physical_device_surface_capabilities(pd, surface)
+                    .ctx("surface capabilities")?,
+                surface_fn
+                    .get_physical_device_surface_formats(pd, surface)
+                    .ctx("surface formats")?,
+                surface_fn
+                    .get_physical_device_surface_present_modes(pd, surface)
+                    .ctx("present modes")?,
             )
         };
         let format = pick_format(&formats)
@@ -120,8 +131,12 @@ impl Swapchain {
             caps.current_extent
         } else {
             vk::Extent2D {
-                width: extent.width.clamp(caps.min_image_extent.width, caps.max_image_extent.width),
-                height: extent.height.clamp(caps.min_image_extent.height, caps.max_image_extent.height),
+                width: extent
+                    .width
+                    .clamp(caps.min_image_extent.width, caps.max_image_extent.width),
+                height: extent
+                    .height
+                    .clamp(caps.min_image_extent.height, caps.max_image_extent.height),
             }
         };
         if extent.width == 0 || extent.height == 0 {
@@ -169,7 +184,8 @@ impl Swapchain {
         }
         self.raw = raw;
         // SAFETY: fresh swapchain.
-        self.images = unsafe { swapchain_fn.get_swapchain_images(raw) }.ctx("get swapchain images")?;
+        self.images =
+            unsafe { swapchain_fn.get_swapchain_images(raw) }.ctx("get swapchain images")?;
         let device = self.ctx.device();
         for &image in &self.images {
             let view_info = vk::ImageViewCreateInfo::default()
@@ -183,7 +199,8 @@ impl Swapchain {
                         .layer_count(1),
                 );
             // SAFETY: valid image.
-            self.views.push(unsafe { device.create_image_view(&view_info, None) }.ctx("swapchain view")?);
+            self.views
+                .push(unsafe { device.create_image_view(&view_info, None) }.ctx("swapchain view")?);
             // SAFETY: valid device.
             self.render_finished.push(
                 unsafe { device.create_semaphore(&vk::SemaphoreCreateInfo::default(), None) }
@@ -230,7 +247,9 @@ impl Swapchain {
     pub fn acquire(&self, image_available: vk::Semaphore) -> VkResult<Option<AcquiredImage>> {
         let swapchain_fn = self.swapchain_fn()?;
         // SAFETY: valid swapchain and unsignaled semaphore.
-        match unsafe { swapchain_fn.acquire_next_image(self.raw, u64::MAX, image_available, vk::Fence::null()) } {
+        match unsafe {
+            swapchain_fn.acquire_next_image(self.raw, u64::MAX, image_available, vk::Fence::null())
+        } {
             Ok((index, suboptimal)) => {
                 let i = index as usize;
                 Ok(Some(AcquiredImage {
@@ -242,7 +261,10 @@ impl Swapchain {
                 }))
             }
             Err(vk::Result::ERROR_OUT_OF_DATE_KHR) => Ok(None),
-            Err(e) => Err(VkError::Api { context: "acquire swapchain image", result: e }),
+            Err(e) => Err(VkError::Api {
+                context: "acquire swapchain image",
+                result: e,
+            }),
         }
     }
 
@@ -258,7 +280,10 @@ impl Swapchain {
         match self.ctx.present(&info) {
             Ok(suboptimal) => Ok(suboptimal || image.suboptimal),
             Err(vk::Result::ERROR_OUT_OF_DATE_KHR) => Ok(true),
-            Err(e) => Err(VkError::Api { context: "present", result: e }),
+            Err(e) => Err(VkError::Api {
+                context: "present",
+                result: e,
+            }),
         }
     }
 
@@ -313,13 +338,20 @@ fn pick_format(formats: &[vk::SurfaceFormatKHR]) -> Option<vk::SurfaceFormatKHR>
         .copied()
 }
 
-fn pick_present_mode(requested: PresentMode, available: &[vk::PresentModeKHR]) -> vk::PresentModeKHR {
+fn pick_present_mode(
+    requested: PresentMode,
+    available: &[vk::PresentModeKHR],
+) -> vk::PresentModeKHR {
     let want = match requested {
         PresentMode::Fifo => vk::PresentModeKHR::FIFO,
         PresentMode::Mailbox => vk::PresentModeKHR::MAILBOX,
         PresentMode::Immediate => vk::PresentModeKHR::IMMEDIATE,
     };
-    if available.contains(&want) { want } else { vk::PresentModeKHR::FIFO }
+    if available.contains(&want) {
+        want
+    } else {
+        vk::PresentModeKHR::FIFO
+    }
 }
 
 #[cfg(test)]
@@ -328,16 +360,35 @@ mod tests {
 
     #[test]
     fn format_preference() {
-        let f = |format| vk::SurfaceFormatKHR { format, color_space: vk::ColorSpaceKHR::SRGB_NONLINEAR };
-        assert_eq!(pick_format(&[f(vk::Format::B8G8R8A8_UNORM), f(vk::Format::B8G8R8A8_SRGB)]).unwrap().format, vk::Format::B8G8R8A8_SRGB);
-        assert_eq!(pick_format(&[f(vk::Format::A2B10G10R10_UNORM_PACK32)]).unwrap().format, vk::Format::A2B10G10R10_UNORM_PACK32);
+        let f = |format| vk::SurfaceFormatKHR {
+            format,
+            color_space: vk::ColorSpaceKHR::SRGB_NONLINEAR,
+        };
+        assert_eq!(
+            pick_format(&[f(vk::Format::B8G8R8A8_UNORM), f(vk::Format::B8G8R8A8_SRGB)])
+                .unwrap()
+                .format,
+            vk::Format::B8G8R8A8_SRGB
+        );
+        assert_eq!(
+            pick_format(&[f(vk::Format::A2B10G10R10_UNORM_PACK32)])
+                .unwrap()
+                .format,
+            vk::Format::A2B10G10R10_UNORM_PACK32
+        );
         assert!(pick_format(&[]).is_none());
     }
 
     #[test]
     fn present_mode_fallback() {
         let avail = [vk::PresentModeKHR::FIFO, vk::PresentModeKHR::IMMEDIATE];
-        assert_eq!(pick_present_mode(PresentMode::Mailbox, &avail), vk::PresentModeKHR::FIFO);
-        assert_eq!(pick_present_mode(PresentMode::Immediate, &avail), vk::PresentModeKHR::IMMEDIATE);
+        assert_eq!(
+            pick_present_mode(PresentMode::Mailbox, &avail),
+            vk::PresentModeKHR::FIFO
+        );
+        assert_eq!(
+            pick_present_mode(PresentMode::Immediate, &avail),
+            vk::PresentModeKHR::IMMEDIATE
+        );
     }
 }

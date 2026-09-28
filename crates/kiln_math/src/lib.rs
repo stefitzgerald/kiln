@@ -13,7 +13,9 @@ mod transform;
 pub use bounds::{Aabb, Containment, Frustum, Plane};
 pub use glam;
 pub use glam::{Affine3A, EulerRot, Mat3, Mat3A, Mat4, Quat, UVec2, Vec2, Vec3, Vec3A, Vec4};
-pub use projection::{look_at, perspective_reverse_z, perspective_infinite_reverse_z, orthographic_reverse_z};
+pub use projection::{
+    look_at, orthographic_reverse_z, perspective_infinite_reverse_z, perspective_reverse_z,
+};
 pub use transform::Transform;
 
 /// World up axis (+Y).

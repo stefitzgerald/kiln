@@ -28,8 +28,14 @@ impl Report {
 }
 
 fn output(cmd: &str, args: &[&str]) -> Option<String> {
-    let out = Command::new(cmd).args(args).stderr(Stdio::null()).output().ok()?;
-    out.status.success().then(|| String::from_utf8_lossy(&out.stdout).into_owned())
+    let out = Command::new(cmd)
+        .args(args)
+        .stderr(Stdio::null())
+        .output()
+        .ok()?;
+    out.status
+        .success()
+        .then(|| String::from_utf8_lossy(&out.stdout).into_owned())
 }
 
 pub(crate) fn run() -> Result<(), String> {
@@ -49,7 +55,11 @@ pub(crate) fn run() -> Result<(), String> {
             host
         }
         None => {
-            r.line(Level::Fail, "rustc", "not found. Install from https://rustup.rs");
+            r.line(
+                Level::Fail,
+                "rustc",
+                "not found. Install from https://rustup.rs",
+            );
             String::new()
         }
     };
@@ -82,13 +92,21 @@ pub(crate) fn run() -> Result<(), String> {
     } else if host.ends_with("windows-gnu") {
         r.line(Level::Fail, "linker", "gcc/ld not usable. Install MinGW-w64 (e.g. MSYS2 `mingw-w64-x86_64-gcc`) and add it to PATH");
     } else {
-        r.line(Level::Fail, "linker", "cannot link a test program. Install a C toolchain (build-essential / Xcode CLT)");
+        r.line(
+            Level::Fail,
+            "linker",
+            "cannot link a test program. Install a C toolchain (build-essential / Xcode CLT)",
+        );
     }
 
     // Vulkan SDK (optional for building; needed for validation layers).
     match std::env::var_os("VULKAN_SDK").map(PathBuf::from) {
         Some(sdk) if sdk.exists() => r.line(Level::Ok, "VULKAN_SDK", &sdk.display().to_string()),
-        Some(sdk) => r.line(Level::Warn, "VULKAN_SDK", &format!("{} does not exist", sdk.display())),
+        Some(sdk) => r.line(
+            Level::Warn,
+            "VULKAN_SDK",
+            &format!("{} does not exist", sdk.display()),
+        ),
         None => r.line(
             Level::Warn,
             "VULKAN_SDK",
@@ -109,7 +127,11 @@ pub(crate) fn run() -> Result<(), String> {
     }
     layer_dirs.push("/usr/share/vulkan/explicit_layer.d".into());
     layer_dirs.push("/usr/local/share/vulkan/explicit_layer.d".into());
-    match layer_dirs.iter().map(|d| d.join("VkLayer_khronos_validation.json")).find(|p| p.exists()) {
+    match layer_dirs
+        .iter()
+        .map(|d| d.join("VkLayer_khronos_validation.json"))
+        .find(|p| p.exists())
+    {
         Some(p) => r.line(Level::Ok, "validation layer", &p.display().to_string()),
         None => r.line(
             Level::Warn,
@@ -124,22 +146,46 @@ pub(crate) fn run() -> Result<(), String> {
         Some(text) => {
             let devices: Vec<String> = text
                 .lines()
-                .filter_map(|l| l.trim().strip_prefix("deviceName").map(|s| s.trim_start_matches([' ', '=']).trim().to_owned()))
+                .filter_map(|l| {
+                    l.trim()
+                        .strip_prefix("deviceName")
+                        .map(|s| s.trim_start_matches([' ', '=']).trim().to_owned())
+                })
                 .collect();
             let versions: Vec<String> = text
                 .lines()
-                .filter_map(|l| l.trim().strip_prefix("apiVersion").map(|s| s.trim_start_matches([' ', '=']).trim().to_owned()))
+                .filter_map(|l| {
+                    l.trim()
+                        .strip_prefix("apiVersion")
+                        .map(|s| s.trim_start_matches([' ', '=']).trim().to_owned())
+                })
                 .collect();
             if devices.is_empty() {
-                r.line(Level::Fail, "GPU", "Vulkan loader works but reports no devices");
+                r.line(
+                    Level::Fail,
+                    "GPU",
+                    "Vulkan loader works but reports no devices",
+                );
             }
             for (name, ver) in devices.iter().zip(versions.iter()) {
-                let ok = ver.split('.').take(2).map(|p| p.parse::<u32>().unwrap_or(0)).collect::<Vec<_>>();
-                let supports_13 = ok.first().copied().unwrap_or(0) > 1 || (ok.first() == Some(&1) && ok.get(1).copied().unwrap_or(0) >= 3);
+                let ok = ver
+                    .split('.')
+                    .take(2)
+                    .map(|p| p.parse::<u32>().unwrap_or(0))
+                    .collect::<Vec<_>>();
+                let supports_13 = ok.first().copied().unwrap_or(0) > 1
+                    || (ok.first() == Some(&1) && ok.get(1).copied().unwrap_or(0) >= 3);
                 r.line(
                     if supports_13 { Level::Ok } else { Level::Warn },
                     "GPU",
-                    &format!("{name} (Vulkan {ver}){}", if supports_13 { "" } else { " - Kiln requires Vulkan 1.3" }),
+                    &format!(
+                        "{name} (Vulkan {ver}){}",
+                        if supports_13 {
+                            ""
+                        } else {
+                            " - Kiln requires Vulkan 1.3"
+                        }
+                    ),
                 );
             }
         }

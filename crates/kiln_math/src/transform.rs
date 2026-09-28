@@ -19,12 +19,18 @@ impl Default for Transform {
 
 impl Transform {
     /// The identity transform.
-    pub const IDENTITY: Self =
-        Self { translation: Vec3::ZERO, rotation: Quat::IDENTITY, scale: Vec3::ONE };
+    pub const IDENTITY: Self = Self {
+        translation: Vec3::ZERO,
+        rotation: Quat::IDENTITY,
+        scale: Vec3::ONE,
+    };
 
     /// Pure translation.
     pub const fn from_translation(translation: Vec3) -> Self {
-        Self { translation, ..Self::IDENTITY }
+        Self {
+            translation,
+            ..Self::IDENTITY
+        }
     }
 
     /// Pure translation from components.
@@ -34,18 +40,28 @@ impl Transform {
 
     /// Pure rotation.
     pub const fn from_rotation(rotation: Quat) -> Self {
-        Self { rotation, ..Self::IDENTITY }
+        Self {
+            rotation,
+            ..Self::IDENTITY
+        }
     }
 
     /// Pure scale.
     pub const fn from_scale(scale: Vec3) -> Self {
-        Self { scale, ..Self::IDENTITY }
+        Self {
+            scale,
+            ..Self::IDENTITY
+        }
     }
 
     /// Decompose an affine matrix. Shear is lost.
     pub fn from_affine(affine: Affine3A) -> Self {
         let (scale, rotation, translation) = affine.to_scale_rotation_translation();
-        Self { translation, rotation, scale }
+        Self {
+            translation,
+            rotation,
+            scale,
+        }
     }
 
     /// Builder: set translation.
@@ -158,7 +174,9 @@ mod tests {
     fn arb_quat() -> impl Strategy<Value = Quat> {
         (arb_vec3(1.0), -std::f32::consts::PI..std::f32::consts::PI).prop_filter_map(
             "degenerate axis",
-            |(axis, angle)| (axis.length() > 1e-3).then(|| Quat::from_axis_angle(axis.normalize(), angle)),
+            |(axis, angle)| {
+                (axis.length() > 1e-3).then(|| Quat::from_axis_angle(axis.normalize(), angle))
+            },
         )
     }
 
@@ -167,10 +185,16 @@ mod tests {
         #[test]
         fn tc_math_01_inverse_roundtrip(t in arb_vec3(100.0), r in arb_quat(), s in 0.1f32..10.0) {
             let tf = Transform { translation: t, rotation: r, scale: Vec3::splat(s) };
-            let id = (tf * tf.inverse()).to_matrix();
-            prop_assert!(id.abs_diff_eq(Mat4::IDENTITY, 1e-4), "{id:?}");
-            let id2 = (tf.inverse() * tf).to_matrix();
-            prop_assert!(id2.abs_diff_eq(Mat4::IDENTITY, 1e-4), "{id2:?}");
+            // Rotation/scale must be exact to 1e-4. Translation error scales with the largest
+            // intermediate value (|t| / s for the inverse), so allow a few f32 ULPs of it.
+            let magnitude = 1.0 + t.length() * s.max(1.0 / s);
+            let translation_tol = 8.0 * f32::EPSILON * magnitude;
+            for id in [(tf * tf.inverse()).to_matrix(), (tf.inverse() * tf).to_matrix()] {
+                let linear = glam::Mat3::from_mat4(id);
+                prop_assert!(linear.abs_diff_eq(glam::Mat3::IDENTITY, 1e-4), "{id:?}");
+                let err = id.w_axis.truncate().abs().max_element();
+                prop_assert!(err <= translation_tol, "translation error {err} > {translation_tol}: {id:?}");
+            }
         }
 
         /// Non-uniform scale goes through the affine path, which is always exact.

@@ -69,7 +69,9 @@ pub struct GltfAsset {
 impl GltfAsset {
     /// Root nodes of the default scene.
     pub fn default_roots(&self) -> &[usize] {
-        self.default_scene.and_then(|i| self.scenes.get(i)).map_or(&[], |s| &s.roots)
+        self.default_scene
+            .and_then(|i| self.scenes.get(i))
+            .map_or(&[], |s| &s.roots)
     }
 }
 
@@ -79,7 +81,10 @@ pub(crate) fn load(
     origin: &str,
     server: &mut AssetServer,
 ) -> Result<GltfAsset, AssetError> {
-    let parse = |message: String| AssetError::Parse { origin: origin.to_owned(), message };
+    let parse = |message: String| AssetError::Parse {
+        origin: origin.to_owned(),
+        message,
+    };
 
     // The gltf crate validates the document, but indexing into malformed buffers can still
     // panic in dependencies. Asset files are untrusted input, so contain any panic here.
@@ -113,9 +118,15 @@ pub(crate) fn load(
                 None => *default_material
                     .get_or_insert_with(|| server.materials.add(Material::default())),
             };
-            primitives.push(GltfPrimitive { mesh: server.meshes.add(cpu), material });
+            primitives.push(GltfPrimitive {
+                mesh: server.meshes.add(cpu),
+                material,
+            });
         }
-        asset.meshes.push(GltfMesh { name: mesh.name, primitives });
+        asset.meshes.push(GltfMesh {
+            name: mesh.name,
+            primitives,
+        });
     }
     Ok(asset)
 }
@@ -152,7 +163,14 @@ fn decode(bytes: &[u8], base: Option<&Path>) -> Result<Decoded, String> {
         .into_iter()
         .zip(srgb)
         .map(|(data, is_srgb)| {
-            convert_image(data, if is_srgb { ColorSpace::Srgb } else { ColorSpace::Linear })
+            convert_image(
+                data,
+                if is_srgb {
+                    ColorSpace::Srgb
+                } else {
+                    ColorSpace::Linear
+                },
+            )
         })
         .collect::<Result<Vec<_>, _>>()?;
 
@@ -185,7 +203,10 @@ fn decode(bytes: &[u8], base: Option<&Path>) -> Result<Decoded, String> {
                 ),
             }
         }
-        meshes.push(DecodedMesh { name: mesh.name().map(str::to_owned), primitives });
+        meshes.push(DecodedMesh {
+            name: mesh.name().map(str::to_owned),
+            primitives,
+        });
     }
 
     let nodes = document
@@ -212,10 +233,19 @@ fn decode(bytes: &[u8], base: Option<&Path>) -> Result<Decoded, String> {
             roots: s.nodes().map(|n| n.index()).collect(),
         })
         .collect::<Vec<_>>();
-    let default_scene =
-        document.default_scene().map(|s| s.index()).or((!scenes.is_empty()).then_some(0));
+    let default_scene = document
+        .default_scene()
+        .map(|s| s.index())
+        .or((!scenes.is_empty()).then_some(0));
 
-    Ok(Decoded { images, materials, meshes, nodes, scenes, default_scene })
+    Ok(Decoded {
+        images,
+        materials,
+        meshes,
+        nodes,
+        scenes,
+        default_scene,
+    })
 }
 
 /// Read one primitive as a triangle list. `Ok(None)` for point/line primitives.
@@ -243,7 +273,11 @@ fn read_primitive(
         Mode::Points | Mode::Lines | Mode::LineLoop | Mode::LineStrip => return Ok(None),
     };
     let fill = |len: usize, what: &str| {
-        if len == n { Ok(()) } else { Err(format!("{what} count {len} != position count {n}")) }
+        if len == n {
+            Ok(())
+        } else {
+            Err(format!("{what} count {len} != position count {n}"))
+        }
     };
     let uvs: Vec<[f32; 2]> = match reader.read_tex_coords(0) {
         Some(t) => t.into_f32().collect(),
@@ -256,7 +290,13 @@ fn read_primitive(
     };
     fill(colors.len(), "COLOR_0")?;
 
-    let mut mesh = Mesh { positions, normals: vec![[0.0; 3]; n], uvs, colors, indices };
+    let mut mesh = Mesh {
+        positions,
+        normals: vec![[0.0; 3]; n],
+        uvs,
+        colors,
+        indices,
+    };
     match reader.read_normals() {
         Some(normals) => {
             mesh.normals = normals.collect();
@@ -327,8 +367,17 @@ fn convert_image(data: gltf::image::Data, color_space: ColorSpace) -> Result<Ima
         Format::R32G32B32FLOAT => expand(3, 4),
         Format::R32G32B32A32FLOAT => expand(4, 4),
     };
-    let image = Image { width: w, height: h, data: rgba, color_space };
-    if image.is_valid() { Ok(image) } else { Err(format!("image data does not match {w}x{h}")) }
+    let image = Image {
+        width: w,
+        height: h,
+        data: rgba,
+        color_space,
+    };
+    if image.is_valid() {
+        Ok(image)
+    } else {
+        Err(format!("image data does not match {w}x{h}"))
+    }
 }
 
 #[cfg(test)]

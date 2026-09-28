@@ -18,7 +18,11 @@ pub struct Handle<T> {
 impl<T> Handle<T> {
     /// Build a handle from raw parts. Mostly useful for serialization and tests.
     pub const fn from_raw_parts(index: u32, generation: u32) -> Self {
-        Self { index, generation, _marker: PhantomData }
+        Self {
+            index,
+            generation,
+            _marker: PhantomData,
+        }
     }
 
     /// Slot index inside the owning pool.
@@ -98,7 +102,11 @@ impl<T> Default for HandlePool<T> {
 impl<T> HandlePool<T> {
     /// Create an empty pool.
     pub const fn new() -> Self {
-        Self { slots: Vec::new(), free: Vec::new(), len: 0 }
+        Self {
+            slots: Vec::new(),
+            free: Vec::new(),
+            len: 0,
+        }
     }
 
     /// Number of live values.
@@ -124,7 +132,10 @@ impl<T> HandlePool<T> {
             return Handle::from_raw_parts(index, slot.generation);
         }
         let index = u32::try_from(self.slots.len()).expect("HandlePool exceeded u32::MAX slots");
-        self.slots.push(Slot { generation: 0, value: Some(value) });
+        self.slots.push(Slot {
+            generation: 0,
+            value: Some(value),
+        });
         Handle::from_raw_parts(index, 0)
     }
 
@@ -152,13 +163,21 @@ impl<T> HandlePool<T> {
     /// Borrow the value behind `handle`, or `None` if it is stale.
     pub fn get(&self, handle: Handle<T>) -> Option<&T> {
         let slot = self.slots.get(handle.index as usize)?;
-        if slot.generation == handle.generation { slot.value.as_ref() } else { None }
+        if slot.generation == handle.generation {
+            slot.value.as_ref()
+        } else {
+            None
+        }
     }
 
     /// Mutably borrow the value behind `handle`, or `None` if it is stale.
     pub fn get_mut(&mut self, handle: Handle<T>) -> Option<&mut T> {
         let slot = self.slots.get_mut(handle.index as usize)?;
-        if slot.generation == handle.generation { slot.value.as_mut() } else { None }
+        if slot.generation == handle.generation {
+            slot.value.as_mut()
+        } else {
+            None
+        }
     }
 
     /// Iterate over all live `(handle, value)` pairs in slot order.
@@ -181,11 +200,11 @@ impl<T> HandlePool<T> {
     /// Remove every value. Outstanding handles become stale.
     pub fn clear(&mut self) {
         for (i, slot) in self.slots.iter_mut().enumerate() {
-            if slot.value.take().is_some() {
-                if let Some(next) = slot.generation.checked_add(1) {
-                    slot.generation = next;
-                    self.free.push(i as u32);
-                }
+            if slot.value.take().is_some()
+                && let Some(next) = slot.generation.checked_add(1)
+            {
+                slot.generation = next;
+                self.free.push(i as u32);
             }
         }
         self.len = 0;
@@ -214,7 +233,11 @@ mod tests {
         assert_eq!(b.generation(), a.generation() + 1);
         assert_eq!(pool.get(a), None, "stale handle must not resolve");
         assert_eq!(pool.get(b), Some(&"b"));
-        assert_eq!(pool.remove(a), None, "double remove via stale handle is a no-op");
+        assert_eq!(
+            pool.remove(a),
+            None,
+            "double remove via stale handle is a no-op"
+        );
         assert_eq!(pool.len(), 1);
     }
 
@@ -247,7 +270,10 @@ mod tests {
     }
 
     fn op() -> impl Strategy<Value = Op> {
-        prop_oneof![any::<u32>().prop_map(Op::Insert), any::<usize>().prop_map(Op::Remove)]
+        prop_oneof![
+            any::<u32>().prop_map(Op::Insert),
+            any::<usize>().prop_map(Op::Remove)
+        ]
     }
 
     proptest! {

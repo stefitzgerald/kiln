@@ -1,5 +1,5 @@
 //! TC-ECS-08: query throughput baseline. Run with `cargo bench -p kiln_ecs`.
-#![allow(missing_docs)]
+#![allow(missing_docs, clippy::unwrap_used)]
 
 use criterion::{Criterion, criterion_group, criterion_main};
 use kiln_ecs::{Component, World};
@@ -9,7 +9,7 @@ struct Position([f32; 3]);
 impl Component for Position {}
 struct Velocity([f32; 3]);
 impl Component for Velocity {}
-struct Health(f32);
+struct Health(#[allow(dead_code)] f32);
 impl Component for Health {}
 
 fn world(n: usize) -> World {

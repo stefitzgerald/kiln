@@ -73,14 +73,20 @@ impl Mesh {
     /// Check the mesh invariants.
     pub fn validate(&self) -> Result<(), MeshError> {
         let vertices = self.positions.len();
-        for (attribute, len) in
-            [("normals", self.normals.len()), ("uvs", self.uvs.len()), ("colors", self.colors.len())]
-        {
+        for (attribute, len) in [
+            ("normals", self.normals.len()),
+            ("uvs", self.uvs.len()),
+            ("colors", self.colors.len()),
+        ] {
             if len != vertices {
-                return Err(MeshError::AttributeLength { attribute, len, vertices });
+                return Err(MeshError::AttributeLength {
+                    attribute,
+                    len,
+                    vertices,
+                });
             }
         }
-        if self.indices.len() % 3 != 0 {
+        if !self.indices.len().is_multiple_of(3) {
             return Err(MeshError::NotTriangles(self.indices.len()));
         }
         if let Some(&index) = self.indices.iter().find(|&&i| i as usize >= vertices) {
@@ -98,17 +104,21 @@ impl Mesh {
     /// de-indexed), as flat shading requires. Degenerate triangles get a +Y normal.
     pub fn compute_flat_normals(&mut self) {
         let mut out = Mesh::default();
-        for tri in self.indices.chunks_exact(3) {
+        for tri in self.indices.as_chunks::<3>().0 {
             let [a, b, c] = [tri[0], tri[1], tri[2]].map(|i| i as usize);
-            let (pa, pb, pc) =
-                (Vec3::from(self.positions[a]), Vec3::from(self.positions[b]), Vec3::from(self.positions[c]));
+            let (pa, pb, pc) = (
+                Vec3::from(self.positions[a]),
+                Vec3::from(self.positions[b]),
+                Vec3::from(self.positions[c]),
+            );
             let n = (pb - pa).cross(pc - pa).try_normalize().unwrap_or(Vec3::Y);
             for v in [a, b, c] {
                 out.indices.push(out.positions.len() as u32);
                 out.positions.push(self.positions[v]);
                 out.normals.push(n.into());
                 out.uvs.push(self.uvs.get(v).copied().unwrap_or_default());
-                out.colors.push(self.colors.get(v).copied().unwrap_or([1.0; 4]));
+                out.colors
+                    .push(self.colors.get(v).copied().unwrap_or([1.0; 4]));
             }
         }
         *self = out;
@@ -120,7 +130,11 @@ impl Mesh {
             positions: vec![[0.0, 0.5, 0.0], [-0.5, -0.5, 0.0], [0.5, -0.5, 0.0]],
             normals: vec![[0.0, 0.0, 1.0]; 3],
             uvs: vec![[0.5, 0.0], [0.0, 1.0], [1.0, 1.0]],
-            colors: vec![[1.0, 0.0, 0.0, 1.0], [0.0, 1.0, 0.0, 1.0], [0.0, 0.0, 1.0, 1.0]],
+            colors: vec![
+                [1.0, 0.0, 0.0, 1.0],
+                [0.0, 1.0, 0.0, 1.0],
+                [0.0, 0.0, 1.0, 1.0],
+            ],
             indices: vec![0, 1, 2],
         }
     }
@@ -165,13 +179,19 @@ impl Mesh {
         for (n, u, v) in faces {
             let (n, u, v) = (Vec3::from(n), Vec3::from(u), Vec3::from(v));
             let base = mesh.positions.len() as u32;
-            for (su, sv, uv) in [(-1.0, -1.0, [0.0, 1.0]), (1.0, -1.0, [1.0, 1.0]), (1.0, 1.0, [1.0, 0.0]), (-1.0, 1.0, [0.0, 0.0])] {
+            for (su, sv, uv) in [
+                (-1.0, -1.0, [0.0, 1.0]),
+                (1.0, -1.0, [1.0, 1.0]),
+                (1.0, 1.0, [1.0, 0.0]),
+                (-1.0, 1.0, [0.0, 0.0]),
+            ] {
                 mesh.positions.push(((n + u * su + v * sv) * h).into());
                 mesh.normals.push(n.into());
                 mesh.uvs.push(uv);
                 mesh.colors.push([1.0; 4]);
             }
-            mesh.indices.extend_from_slice(&[base, base + 1, base + 2, base, base + 2, base + 3]);
+            mesh.indices
+                .extend_from_slice(&[base, base + 1, base + 2, base, base + 2, base + 3]);
         }
         mesh
     }
@@ -217,13 +237,16 @@ mod tests {
 
     fn assert_outward_ccw(mesh: &Mesh) {
         // For convex shapes centered at the origin, CCW triangles face away from the center.
-        for tri in mesh.indices.chunks_exact(3) {
+        for tri in mesh.indices.as_chunks::<3>().0 {
             let p = [tri[0], tri[1], tri[2]].map(|i| Vec3::from(mesh.positions[i as usize]));
             let face_n = (p[1] - p[0]).cross(p[2] - p[0]);
             let centroid = (p[0] + p[1] + p[2]) / 3.0;
             assert!(face_n.dot(centroid) > 0.0, "inward/cw triangle {tri:?}");
             let vn = Vec3::from(mesh.normals[tri[0] as usize]);
-            assert!(vn.dot(face_n) > 0.0, "normal disagrees with winding {tri:?}");
+            assert!(
+                vn.dot(face_n) > 0.0,
+                "normal disagrees with winding {tri:?}"
+            );
         }
     }
 
@@ -245,15 +268,26 @@ mod tests {
     /// TC-AST-05 (unit level): flat normals are unit length and perpendicular to faces.
     #[test]
     fn flat_normals() {
-        let mesh =
-            Mesh::from_positions(vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, -1.0], [5.0, 5.0, 5.0]], vec![0, 1, 2, 3, 3, 3])
-                .unwrap();
+        let mesh = Mesh::from_positions(
+            vec![
+                [0.0, 0.0, 0.0],
+                [1.0, 0.0, 0.0],
+                [0.0, 0.0, -1.0],
+                [5.0, 5.0, 5.0],
+            ],
+            vec![0, 1, 2, 3, 3, 3],
+        )
+        .unwrap();
         assert_eq!(mesh.vertex_count(), 6, "de-indexed");
         for n in &mesh.normals {
             assert!((Vec3::from(*n).length() - 1.0).abs() < 1e-6);
         }
         assert_eq!(mesh.normals[0], [0.0, 1.0, 0.0]);
-        assert_eq!(mesh.normals[3], [0.0, 1.0, 0.0], "degenerate triangle falls back to +Y");
+        assert_eq!(
+            mesh.normals[3],
+            [0.0, 1.0, 0.0],
+            "degenerate triangle falls back to +Y"
+        );
     }
 
     #[test]
@@ -262,9 +296,21 @@ mod tests {
         m.indices.push(7);
         assert_eq!(m.validate(), Err(MeshError::NotTriangles(4)));
         m.indices.extend([0, 1]);
-        assert_eq!(m.validate(), Err(MeshError::IndexOutOfRange { index: 7, vertices: 3 }));
+        assert_eq!(
+            m.validate(),
+            Err(MeshError::IndexOutOfRange {
+                index: 7,
+                vertices: 3
+            })
+        );
         let mut m = Mesh::triangle();
         m.uvs.pop();
-        assert!(matches!(m.validate(), Err(MeshError::AttributeLength { attribute: "uvs", .. })));
+        assert!(matches!(
+            m.validate(),
+            Err(MeshError::AttributeLength {
+                attribute: "uvs",
+                ..
+            })
+        ));
     }
 }

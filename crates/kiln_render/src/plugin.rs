@@ -5,7 +5,9 @@ use kiln_asset::AssetServer;
 use kiln_ecs::World;
 use kiln_math::{Mat4, Vec3};
 use kiln_platform::{PrimaryWindow, WindowSize};
-use kiln_scene::{AmbientLight, Camera, ClearColor, DirectionalLight, GlobalTransform, MeshInstance};
+use kiln_scene::{
+    AmbientLight, Camera, ClearColor, DirectionalLight, GlobalTransform, MeshInstance,
+};
 
 use crate::{DirectionalLightData, DrawItem, RenderScene, Renderer, RendererSettings};
 
@@ -23,7 +25,8 @@ pub struct RenderPlugin {
 
 impl Plugin for RenderPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(self.settings.clone()).add_system(Stage::Render, render_system);
+        app.insert_resource(self.settings.clone())
+            .add_system(Stage::Render, render_system);
     }
 }
 
@@ -38,7 +41,9 @@ pub fn extract_scene(world: &World, aspect: f32) -> RenderScene {
         // No camera: look down −Z from slightly behind the origin so something is visible.
         None => {
             let cam = Camera::default();
-            let at = GlobalTransform(kiln_math::Affine3A::from_translation(Vec3::new(0.0, 0.0, 5.0)));
+            let at = GlobalTransform(kiln_math::Affine3A::from_translation(Vec3::new(
+                0.0, 0.0, 5.0,
+            )));
             (cam.view_projection(&at, aspect), at.translation())
         }
     };
@@ -49,11 +54,18 @@ pub fn extract_scene(world: &World, aspect: f32) -> RenderScene {
             direction: g.forward(),
             color: l.color.map(|c| c * l.intensity),
         });
-    let ambient = world.resource::<AmbientLight>().copied().unwrap_or_default();
+    let ambient = world
+        .resource::<AmbientLight>()
+        .copied()
+        .unwrap_or_default();
     let clear = world.resource::<ClearColor>().copied().unwrap_or_default();
     let draws = world
         .query_ref::<(&MeshInstance, &GlobalTransform), ()>()
-        .map(|(m, g)| DrawItem { mesh: m.mesh, material: m.material, transform: Mat4::from(g.0) })
+        .map(|(m, g)| DrawItem {
+            mesh: m.mesh,
+            material: m.material,
+            transform: Mat4::from(g.0),
+        })
         .collect();
     RenderScene {
         view_projection,
@@ -68,8 +80,13 @@ pub fn extract_scene(world: &World, aspect: f32) -> RenderScene {
 fn render_system(world: &mut World) {
     let size = world.resource::<WindowSize>().copied().unwrap_or_default();
     if !world.contains_resource::<Renderer>() {
-        let Some(window) = world.resource::<PrimaryWindow>().cloned() else { return };
-        let settings = world.resource::<RendererSettings>().cloned().unwrap_or_default();
+        let Some(window) = world.resource::<PrimaryWindow>().cloned() else {
+            return;
+        };
+        let settings = world
+            .resource::<RendererSettings>()
+            .cloned()
+            .unwrap_or_default();
         match Renderer::new_windowed(&*window.window, size.physical.x, size.physical.y, &settings) {
             Ok(r) => {
                 world.insert_resource(r);

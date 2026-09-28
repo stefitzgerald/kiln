@@ -22,7 +22,11 @@ pub struct ButtonInput<T: Copy + Eq + Hash> {
 
 impl<T: Copy + Eq + Hash> Default for ButtonInput<T> {
     fn default() -> Self {
-        Self { pressed: HashSet::new(), just_pressed: HashSet::new(), just_released: HashSet::new() }
+        Self {
+            pressed: HashSet::new(),
+            just_pressed: HashSet::new(),
+            just_released: HashSet::new(),
+        }
     }
 }
 

@@ -1,5 +1,7 @@
 //! ECS acceptance tests (TC-ECS-*). See docs/testing/M0-test-plan.md.
 
+#![allow(clippy::unwrap_used, clippy::chunks_exact_to_as_chunks)]
+
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -28,7 +30,11 @@ fn tc_ecs_01_spawn_despawn_reuses_index_with_new_generation() {
     assert_ne!(e2.generation(), e1.generation());
     assert!(!w.is_alive(e1));
     assert!(w.is_alive(e2));
-    assert_eq!(w.get::<A>(e1), None, "stale id must not see the new entity's data");
+    assert_eq!(
+        w.get::<A>(e1),
+        None,
+        "stale id must not see the new entity's data"
+    );
     assert_eq!(w.get::<A>(e2), Some(&A(2)));
     assert_eq!(w.insert(e1, B(0)), Err(EntityError::NoSuchEntity(e1)));
 }
@@ -53,7 +59,10 @@ fn tc_ecs_02_tuple_query_visits_only_matches_and_mutations_persist() {
     assert_eq!(w.get::<B>(ab2), Some(&B(33)));
 
     // Option<&T> visits everyone with the required parts.
-    let with_opt: Vec<_> = w.query::<(&A, Option<&B>)>().map(|(a, b)| (a.0, b.copied())).collect();
+    let with_opt: Vec<_> = w
+        .query::<(&A, Option<&B>)>()
+        .map(|(a, b)| (a.0, b.copied()))
+        .collect();
     assert_eq!(with_opt.len(), 3);
     assert!(with_opt.contains(&(2, None)));
 
@@ -76,10 +85,15 @@ fn tc_ecs_03_with_without_filters() {
     with_c.sort();
     assert_eq!(with_c, vec![ac, abc]);
 
-    let without_c: Vec<_> = w.query_filtered::<Entity, (With<A>, Without<C>)>().collect();
+    let without_c: Vec<_> = w
+        .query_filtered::<Entity, (With<A>, Without<C>)>()
+        .collect();
     assert_eq!(without_c, vec![a]);
 
-    let mixed: Vec<_> = w.query_filtered::<&A, (With<C>, Without<B>)>().map(|a| a.0).collect();
+    let mixed: Vec<_> = w
+        .query_filtered::<&A, (With<C>, Without<B>)>()
+        .map(|a| a.0)
+        .collect();
     assert_eq!(mixed, vec![1]);
 
     let has: Vec<_> = w.query::<(&A, Has<B>)>().map(|(a, h)| (a.0, h)).collect();
@@ -161,7 +175,9 @@ fn tc_ecs_07_aliasing_access_is_rejected() {
     let mut w = World::new();
     w.spawn((A(1), B(1)));
     let err = w.try_query::<(&mut A, &A)>().unwrap_err();
-    assert!(matches!(err, QueryError::ConflictingAccess { component } if component.ends_with("::A")));
+    assert!(
+        matches!(err, QueryError::ConflictingAccess { component } if component.ends_with("::A"))
+    );
     assert!(w.try_query::<(&mut A, &mut A)>().is_err());
     assert!(w.try_query::<(&A, Option<&mut A>)>().is_err());
     // Shared + shared, and filters, are fine.
@@ -216,7 +232,10 @@ fn events_as_resource() {
     let mut w = World::new();
     w.init_resource::<Events<u32>>().send(7);
     let mut cursor = EventCursor::<u32>::default();
-    let got: Vec<u32> = cursor.read(w.resource::<Events<u32>>().unwrap()).copied().collect();
+    let got: Vec<u32> = cursor
+        .read(w.resource::<Events<u32>>().unwrap())
+        .copied()
+        .collect();
     assert_eq!(got, [7]);
 }
 

@@ -12,22 +12,34 @@ pub struct Aabb {
 impl Aabb {
     /// Box from corners. Corners are sorted per axis.
     pub fn new(a: Vec3, b: Vec3) -> Self {
-        Self { min: a.min(b), max: a.max(b) }
+        Self {
+            min: a.min(b),
+            max: a.max(b),
+        }
     }
 
     /// Box from center and half extents.
     pub fn from_center_half_extents(center: Vec3, half: Vec3) -> Self {
-        Self { min: center - half.abs(), max: center + half.abs() }
+        Self {
+            min: center - half.abs(),
+            max: center + half.abs(),
+        }
     }
 
     /// Smallest box enclosing `points`, or `None` if the iterator is empty.
     pub fn from_points(points: impl IntoIterator<Item = Vec3>) -> Option<Self> {
         let mut it = points.into_iter();
         let first = it.next()?;
-        Some(it.fold(Self { min: first, max: first }, |b, p| Self {
-            min: b.min.min(p),
-            max: b.max.max(p),
-        }))
+        Some(it.fold(
+            Self {
+                min: first,
+                max: first,
+            },
+            |b, p| Self {
+                min: b.min.min(p),
+                max: b.max.max(p),
+            },
+        ))
     }
 
     /// Center point.
@@ -42,7 +54,10 @@ impl Aabb {
 
     /// Smallest box containing both.
     pub fn union(&self, other: &Aabb) -> Aabb {
-        Aabb { min: self.min.min(other.min), max: self.max.max(other.max) }
+        Aabb {
+            min: self.min.min(other.min),
+            max: self.max.max(other.max),
+        }
     }
 
     /// `true` if `p` is inside or on the boundary.
@@ -56,7 +71,10 @@ impl Aabb {
         let half = Vec3A::from(self.half_extents());
         let abs = m.matrix3.abs();
         let new_half = abs.x_axis * half.x + abs.y_axis * half.y + abs.z_axis * half.z;
-        Aabb { min: (center - new_half).into(), max: (center + new_half).into() }
+        Aabb {
+            min: (center - new_half).into(),
+            max: (center + new_half).into(),
+        }
     }
 }
 
@@ -74,7 +92,10 @@ impl Plane {
     pub fn from_vec4(v: Vec4) -> Option<Self> {
         let n = v.truncate();
         let len = n.length();
-        (len > 1e-8).then(|| Self { normal: n / len, d: v.w / len })
+        (len > 1e-8).then(|| Self {
+            normal: n / len,
+            d: v.w / len,
+        })
     }
 
     /// Signed distance from the plane to `p`.
@@ -176,14 +197,32 @@ mod tests {
         assert_eq!(f.planes().len(), 6);
 
         let unit = |c: Vec3| Aabb::from_center_half_extents(c, Vec3::splat(0.5));
-        assert_eq!(f.classify_aabb(&unit(Vec3::new(0.0, 0.0, -10.0))), Containment::Inside);
-        assert_eq!(f.classify_aabb(&unit(Vec3::new(0.0, 0.0, 10.0))), Containment::Outside);
-        assert_eq!(f.classify_aabb(&unit(Vec3::new(0.0, 0.0, -200.0))), Containment::Outside);
-        assert_eq!(f.classify_aabb(&unit(Vec3::new(50.0, 0.0, -10.0))), Containment::Outside);
+        assert_eq!(
+            f.classify_aabb(&unit(Vec3::new(0.0, 0.0, -10.0))),
+            Containment::Inside
+        );
+        assert_eq!(
+            f.classify_aabb(&unit(Vec3::new(0.0, 0.0, 10.0))),
+            Containment::Outside
+        );
+        assert_eq!(
+            f.classify_aabb(&unit(Vec3::new(0.0, 0.0, -200.0))),
+            Containment::Outside
+        );
+        assert_eq!(
+            f.classify_aabb(&unit(Vec3::new(50.0, 0.0, -10.0))),
+            Containment::Outside
+        );
         // Straddles the right plane (x = -z at 90° fov).
-        assert_eq!(f.classify_aabb(&unit(Vec3::new(10.0, 0.0, -10.0))), Containment::Intersect);
+        assert_eq!(
+            f.classify_aabb(&unit(Vec3::new(10.0, 0.0, -10.0))),
+            Containment::Intersect
+        );
         // Straddles the far plane.
-        assert_eq!(f.classify_aabb(&unit(Vec3::new(0.0, 0.0, -100.0))), Containment::Intersect);
+        assert_eq!(
+            f.classify_aabb(&unit(Vec3::new(0.0, 0.0, -100.0))),
+            Containment::Intersect
+        );
     }
 
     #[test]

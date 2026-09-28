@@ -51,8 +51,15 @@ pub(crate) struct ObjectUniforms {
 impl ObjectUniforms {
     pub(crate) fn new(model: Mat4) -> Self {
         let m3 = Mat3::from_mat4(model);
-        let normal = if m3.determinant().abs() > 1e-12 { m3.inverse().transpose() } else { Mat3::IDENTITY };
-        Self { model: model.to_cols_array_2d(), normal: Mat4::from_mat3(normal).to_cols_array_2d() }
+        let normal = if m3.determinant().abs() > 1e-12 {
+            m3.inverse().transpose()
+        } else {
+            Mat3::IDENTITY
+        };
+        Self {
+            model: model.to_cols_array_2d(),
+            normal: Mat4::from_mat3(normal).to_cols_array_2d(),
+        }
     }
 }
 
@@ -86,7 +93,9 @@ mod tests {
         let o = ObjectUniforms::new(model);
         let n = Mat4::from_cols_array_2d(&o.normal);
         // A 45° normal on a surface stretched along X tilts toward Y.
-        let v = n.transform_vector3(Vec3::new(1.0, 1.0, 0.0).normalize()).normalize();
+        let v = n
+            .transform_vector3(Vec3::new(1.0, 1.0, 0.0).normalize())
+            .normalize();
         assert!(v.y > v.x);
         // Singular matrices don't produce NaNs.
         let o = ObjectUniforms::new(Mat4::ZERO);

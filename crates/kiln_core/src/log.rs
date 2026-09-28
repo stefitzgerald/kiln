@@ -18,9 +18,13 @@ static INIT: OnceLock<bool> = OnceLock::new();
 /// subscriber was already installed by the host application.
 pub fn init_logging() -> bool {
     *INIT.get_or_init(|| {
-        let filter = EnvFilter::try_from_env(LOG_ENV_VAR)
-            .unwrap_or_else(|_| EnvFilter::new(DEFAULT_FILTER));
-        tracing_subscriber::fmt().with_env_filter(filter).with_target(true).try_init().is_ok()
+        let filter =
+            EnvFilter::try_from_env(LOG_ENV_VAR).unwrap_or_else(|_| EnvFilter::new(DEFAULT_FILTER));
+        tracing_subscriber::fmt()
+            .with_env_filter(filter)
+            .with_target(true)
+            .try_init()
+            .is_ok()
     })
 }
 

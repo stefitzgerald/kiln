@@ -16,7 +16,11 @@ pub struct SparseSet<T> {
 
 impl<T> Default for SparseSet<T> {
     fn default() -> Self {
-        Self { sparse: Vec::new(), dense: Vec::new(), data: Vec::new() }
+        Self {
+            sparse: Vec::new(),
+            dense: Vec::new(),
+            data: Vec::new(),
+        }
     }
 }
 

@@ -44,7 +44,10 @@ fn main() -> ExitCode {
 
 /// Workspace root.
 fn root() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).parent().expect("xtask lives in the workspace").to_owned()
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .expect("xtask lives in the workspace")
+        .to_owned()
 }
 
 fn cargo() -> Command {
@@ -55,8 +58,14 @@ fn cargo() -> Command {
 
 fn run_step(name: &str, mut cmd: Command) -> Result<(), String> {
     println!("\n==> {name}");
-    let status = cmd.status().map_err(|e| format!("{name}: failed to start: {e}"))?;
-    if status.success() { Ok(()) } else { Err(format!("{name} failed ({status})")) }
+    let status = cmd
+        .status()
+        .map_err(|e| format!("{name}: failed to start: {e}"))?;
+    if status.success() {
+        Ok(())
+    } else {
+        Err(format!("{name} failed ({status})"))
+    }
 }
 
 fn ci() -> Result<(), String> {
@@ -65,7 +74,14 @@ fn ci() -> Result<(), String> {
     run_step("rustfmt", fmt)?;
 
     let mut clippy = cargo();
-    clippy.args(["clippy", "--workspace", "--all-targets", "--", "-D", "warnings"]);
+    clippy.args([
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings",
+    ]);
     run_step("clippy", clippy)?;
 
     let mut test = cargo();
@@ -73,10 +89,14 @@ fn ci() -> Result<(), String> {
     run_step("tests", test)?;
 
     let mut doc = cargo();
-    doc.args(["doc", "--workspace", "--no-deps"]).env("RUSTDOCFLAGS", "-D warnings");
+    doc.args(["doc", "--workspace", "--no-deps"])
+        .env("RUSTDOCFLAGS", "-D warnings");
     run_step("docs", doc)?;
 
-    let has_deny = Command::new("cargo-deny").arg("--version").output().is_ok_and(|o| o.status.success());
+    let has_deny = Command::new("cargo-deny")
+        .arg("--version")
+        .output()
+        .is_ok_and(|o| o.status.success());
     if has_deny {
         let mut deny = cargo();
         deny.args(["deny", "check"]);
@@ -92,7 +112,15 @@ fn ci() -> Result<(), String> {
 
 fn gpu_test(bless: bool, extra: &[String]) -> Result<(), String> {
     let mut cmd = cargo();
-    cmd.args(["test", "-p", "kiln_rhi_vulkan", "-p", "kiln_render", "--", "--ignored"]);
+    cmd.args([
+        "test",
+        "-p",
+        "kiln_rhi_vulkan",
+        "-p",
+        "kiln_render",
+        "--",
+        "--ignored",
+    ]);
     cmd.args(extra);
     if bless {
         cmd.env("KILN_BLESS", "1");

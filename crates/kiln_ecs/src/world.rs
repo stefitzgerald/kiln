@@ -121,11 +121,17 @@ impl World {
     }
 
     pub(crate) fn storage<T: Component>(&self) -> Option<&SparseSet<T>> {
-        self.storages.get(&TypeId::of::<T>())?.as_any().downcast_ref()
+        self.storages
+            .get(&TypeId::of::<T>())?
+            .as_any()
+            .downcast_ref()
     }
 
     pub(crate) fn storage_mut<T: Component>(&mut self) -> Option<&mut SparseSet<T>> {
-        self.storages.get_mut(&TypeId::of::<T>())?.as_any_mut().downcast_mut()
+        self.storages
+            .get_mut(&TypeId::of::<T>())?
+            .as_any_mut()
+            .downcast_mut()
     }
 
     fn storage_mut_or_init<T: Component>(&mut self) -> &mut SparseSet<T> {
@@ -229,7 +235,11 @@ impl World {
 
     /// Remove and return a resource.
     pub fn remove_resource<R: Resource>(&mut self) -> Option<R> {
-        self.resources.remove(&TypeId::of::<R>())?.downcast().ok().map(|b: Box<R>| *b)
+        self.resources
+            .remove(&TypeId::of::<R>())?
+            .downcast()
+            .ok()
+            .map(|b: Box<R>| *b)
     }
 
     /// Borrow a resource.

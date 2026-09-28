@@ -35,12 +35,19 @@ impl Default for Material {
 impl Material {
     /// Lit material with a solid linear color.
     pub fn color(rgba: [f32; 4]) -> Self {
-        Self { base_color: rgba, ..Self::default() }
+        Self {
+            base_color: rgba,
+            ..Self::default()
+        }
     }
 
     /// Unlit material with a solid linear color.
     pub fn unlit(rgba: [f32; 4]) -> Self {
-        Self { base_color: rgba, unlit: true, ..Self::default() }
+        Self {
+            base_color: rgba,
+            unlit: true,
+            ..Self::default()
+        }
     }
 
     /// Builder: set the base color texture.

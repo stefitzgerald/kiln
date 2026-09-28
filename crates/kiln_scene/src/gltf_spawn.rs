@@ -30,16 +30,28 @@ pub fn spawn_gltf_scene(
     gltf: Handle<GltfAsset>,
     scene: Option<usize>,
 ) -> Result<Entity, SceneError> {
-    let server = world.resource::<AssetServer>().ok_or(SceneError::NoAssetServer)?;
-    let asset = server.gltfs.get(gltf).ok_or(SceneError::NotLoaded(gltf))?.clone();
+    let server = world
+        .resource::<AssetServer>()
+        .ok_or(SceneError::NoAssetServer)?;
+    let asset = server
+        .gltfs
+        .get(gltf)
+        .ok_or(SceneError::NotLoaded(gltf))?
+        .clone();
     let roots = match scene.or(asset.default_scene) {
-        Some(i) => asset.scenes.get(i).ok_or(SceneError::NoSuchScene(i))?.roots.clone(),
+        Some(i) => asset
+            .scenes
+            .get(i)
+            .ok_or(SceneError::NoSuchScene(i))?
+            .roots
+            .clone(),
         None => Vec::new(),
     };
 
     let root = world.spawn((Transform::IDENTITY, Name::new("glTF scene")));
     // Iterative DFS: (node index, parent entity, depth guard).
-    let mut stack: Vec<(usize, Entity, usize)> = roots.iter().rev().map(|&n| (n, root, 0)).collect();
+    let mut stack: Vec<(usize, Entity, usize)> =
+        roots.iter().rev().map(|&n| (n, root, 0)).collect();
     while let Some((index, parent, depth)) = stack.pop() {
         // A valid glTF node graph is a forest; guard anyway against malformed cycles.
         if depth > asset.nodes.len() {
@@ -52,13 +64,22 @@ pub fn spawn_gltf_scene(
 
         if let Some(mesh) = node.mesh.and_then(|m| asset.meshes.get(m)) {
             if let [prim] = mesh.primitives.as_slice() {
-                let _ = world.insert(entity, MeshInstance { mesh: prim.mesh, material: prim.material });
+                let _ = world.insert(
+                    entity,
+                    MeshInstance {
+                        mesh: prim.mesh,
+                        material: prim.material,
+                    },
+                );
             } else {
                 for (i, prim) in mesh.primitives.iter().enumerate() {
                     let child = world.spawn((
                         Transform::IDENTITY,
                         Name(format!("primitive {i}")),
-                        MeshInstance { mesh: prim.mesh, material: prim.material },
+                        MeshInstance {
+                            mesh: prim.mesh,
+                            material: prim.material,
+                        },
                     ));
                     set_parent(world, child, entity).map_err(|_| SceneError::BadNode(index))?;
                 }

@@ -74,6 +74,9 @@ mod tests {
         assert!(forward.abs_diff_eq(Vec3::NEG_Z, 1e-6), "{forward}");
         assert!(up.abs_diff_eq(Vec3::Y, 1e-6), "{up}");
         // The origin lands 5 units in front of the camera.
-        assert!(view.transform_point3(Vec3::ZERO).abs_diff_eq(Vec3::new(0.0, 0.0, -5.0), 1e-6));
+        assert!(
+            view.transform_point3(Vec3::ZERO)
+                .abs_diff_eq(Vec3::new(0.0, 0.0, -5.0), 1e-6)
+        );
     }
 }

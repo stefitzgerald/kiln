@@ -91,7 +91,9 @@ impl GlobalTransform {
 
     /// World-space forward direction (−Z), normalized.
     pub fn forward(&self) -> Vec3 {
-        self.0.transform_vector3(Vec3::NEG_Z).normalize_or(Vec3::NEG_Z)
+        self.0
+            .transform_vector3(Vec3::NEG_Z)
+            .normalize_or(Vec3::NEG_Z)
     }
 }
 
@@ -144,14 +146,22 @@ pub enum Projection {
 
 impl Default for Projection {
     fn default() -> Self {
-        Projection::Perspective { fov_y: 60f32.to_radians(), near: 0.1, far: 1000.0 }
+        Projection::Perspective {
+            fov_y: 60f32.to_radians(),
+            near: 0.1,
+            far: 1000.0,
+        }
     }
 }
 
 impl Projection {
     /// Projection matrix for a target with the given aspect ratio (width / height).
     pub fn matrix(&self, aspect: f32) -> Mat4 {
-        let aspect = if aspect.is_finite() && aspect > 0.0 { aspect } else { 1.0 };
+        let aspect = if aspect.is_finite() && aspect > 0.0 {
+            aspect
+        } else {
+            1.0
+        };
         match *self {
             Projection::Perspective { fov_y, near, far } if far.is_infinite() => {
                 kiln_math::perspective_infinite_reverse_z(fov_y, aspect, near)
@@ -205,7 +215,10 @@ impl Component for DirectionalLight {}
 
 impl Default for DirectionalLight {
     fn default() -> Self {
-        Self { color: [1.0; 3], intensity: 1.0 }
+        Self {
+            color: [1.0; 3],
+            intensity: 1.0,
+        }
     }
 }
 
@@ -220,7 +233,10 @@ pub struct AmbientLight {
 
 impl Default for AmbientLight {
     fn default() -> Self {
-        Self { color: [1.0; 3], intensity: 0.15 }
+        Self {
+            color: [1.0; 3],
+            intensity: 0.15,
+        }
     }
 }
 

@@ -42,7 +42,12 @@ pub struct WindowSettings {
 
 impl Default for WindowSettings {
     fn default() -> Self {
-        Self { title: "Kiln".into(), width: 1280, height: 720, resizable: true }
+        Self {
+            title: "Kiln".into(),
+            width: 1280,
+            height: 720,
+            resizable: true,
+        }
     }
 }
 
@@ -77,7 +82,11 @@ impl WindowSize {
 
     /// Width / height, or 1.0 when minimized.
     pub fn aspect(&self) -> f32 {
-        if self.is_zero() { 1.0 } else { self.physical.x as f32 / self.physical.y as f32 }
+        if self.is_zero() {
+            1.0
+        } else {
+            self.physical.x as f32 / self.physical.y as f32
+        }
     }
 }
 
@@ -114,7 +123,10 @@ impl Runner {
     }
 
     fn minimized(&self) -> bool {
-        self.app.world.resource::<WindowSize>().is_none_or(WindowSize::is_zero)
+        self.app
+            .world
+            .resource::<WindowSize>()
+            .is_none_or(WindowSize::is_zero)
     }
 
     fn frame(&mut self, event_loop: &ActiveEventLoop) {
@@ -149,7 +161,12 @@ impl ApplicationHandler for Runner {
         if self.window.is_some() {
             return;
         }
-        let settings = self.app.world.resource::<WindowSettings>().cloned().unwrap_or_default();
+        let settings = self
+            .app
+            .world
+            .resource::<WindowSettings>()
+            .cloned()
+            .unwrap_or_default();
         let attrs = Window::default_attributes()
             .with_title(settings.title)
             .with_inner_size(LogicalSize::new(settings.width, settings.height))
@@ -163,7 +180,9 @@ impl ApplicationHandler for Runner {
                     "window created"
                 );
                 self.set_size(window.inner_size(), window.scale_factor());
-                self.world().insert_resource(PrimaryWindow { window: window.clone() });
+                self.world().insert_resource(PrimaryWindow {
+                    window: window.clone(),
+                });
                 window.request_redraw();
                 self.window = Some(window);
             }
@@ -197,12 +216,12 @@ impl ApplicationHandler for Runner {
                 }
             }
             WindowEvent::KeyboardInput { event, .. } => {
-                if let PhysicalKey::Code(code) = event.physical_key {
-                    if let Some(keys) = self.world().resource_mut::<ButtonInput<KeyCode>>() {
-                        match event.state {
-                            ElementState::Pressed => keys.press(code),
-                            ElementState::Released => keys.release(code),
-                        }
+                if let PhysicalKey::Code(code) = event.physical_key
+                    && let Some(keys) = self.world().resource_mut::<ButtonInput<KeyCode>>()
+                {
+                    match event.state {
+                        ElementState::Pressed => keys.press(code),
+                        ElementState::Released => keys.release(code),
                     }
                 }
             }
@@ -233,20 +252,18 @@ impl ApplicationHandler for Runner {
                     m.scroll += lines;
                 }
             }
-            WindowEvent::RedrawRequested => {
-                if !self.minimized() {
-                    self.frame(event_loop);
-                }
+            WindowEvent::RedrawRequested if !self.minimized() => {
+                self.frame(event_loop);
             }
             _ => {}
         }
     }
 
     fn device_event(&mut self, _: &ActiveEventLoop, _: DeviceId, event: DeviceEvent) {
-        if let DeviceEvent::MouseMotion { delta } = event {
-            if let Some(m) = self.world().resource_mut::<Mouse>() {
-                m.delta += Vec2::new(delta.0 as f32, delta.1 as f32);
-            }
+        if let DeviceEvent::MouseMotion { delta } = event
+            && let Some(m) = self.world().resource_mut::<Mouse>()
+        {
+            m.delta += Vec2::new(delta.0 as f32, delta.1 as f32);
         }
     }
 
@@ -277,7 +294,11 @@ pub fn run_winit(app: App) -> AppExit {
             return AppExit::error();
         }
     };
-    let mut runner = Runner { app, window: None, exit: None };
+    let mut runner = Runner {
+        app,
+        window: None,
+        exit: None,
+    };
     if let Err(e) = event_loop.run_app(&mut runner) {
         tracing::error!("event loop error: {e}");
         return AppExit::error();

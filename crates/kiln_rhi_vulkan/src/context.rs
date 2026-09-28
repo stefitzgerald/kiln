@@ -102,7 +102,9 @@ pub struct GpuContext(pub(crate) Arc<ContextInner>);
 
 impl std::fmt::Debug for GpuContext {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("GpuContext").field("adapter", &self.0.adapter.name).finish_non_exhaustive()
+        f.debug_struct("GpuContext")
+            .field("adapter", &self.0.adapter.name)
+            .finish_non_exhaustive()
     }
 }
 
@@ -138,7 +140,10 @@ impl GpuContext {
                 Err(e) => {
                     // SAFETY: nothing else was created from the instance.
                     unsafe { parts.destroy() };
-                    return Err(VkError::Api { context: "create window surface", result: e });
+                    return Err(VkError::Api {
+                        context: "create window surface",
+                        result: e,
+                    });
                 }
             },
             None => None,
@@ -250,7 +255,11 @@ impl GpuContext {
 
     /// Present on the queue. Returns `true` if the swapchain is suboptimal.
     pub(crate) fn present(&self, info: &vk::PresentInfoKHR<'_>) -> Result<bool, vk::Result> {
-        let swapchain_fn = self.0.swapchain_fn.as_ref().ok_or(vk::Result::ERROR_EXTENSION_NOT_PRESENT)?;
+        let swapchain_fn = self
+            .0
+            .swapchain_fn
+            .as_ref()
+            .ok_or(vk::Result::ERROR_EXTENSION_NOT_PRESENT)?;
         let _guard = self.0.queue_lock.lock().unwrap_or_else(|p| p.into_inner());
         // SAFETY: the queue is externally synchronized by `queue_lock`.
         unsafe { swapchain_fn.queue_present(self.0.queue, info) }
@@ -281,10 +290,17 @@ impl GpuContext {
                     .ctx("begin upload commands")?;
                 record(cmd);
                 device.end_command_buffer(cmd).ctx("end upload commands")?;
-                device.reset_fences(&[upload.fence]).ctx("reset upload fence")?;
+                device
+                    .reset_fences(&[upload.fence])
+                    .ctx("reset upload fence")?;
                 let cmd_info = [vk::CommandBufferSubmitInfo::default().command_buffer(cmd)];
-                self.submit(&[vk::SubmitInfo2::default().command_buffer_infos(&cmd_info)], upload.fence)?;
-                device.wait_for_fences(&[upload.fence], true, u64::MAX).ctx("wait for upload")
+                self.submit(
+                    &[vk::SubmitInfo2::default().command_buffer_infos(&cmd_info)],
+                    upload.fence,
+                )?;
+                device
+                    .wait_for_fences(&[upload.fence], true, u64::MAX)
+                    .ctx("wait for upload")
             })();
             device.free_command_buffers(upload.pool, &[cmd]);
             result
@@ -299,7 +315,10 @@ impl GpuContext {
     }
 }
 
-fn create_instance(desc: &ContextDesc, display: Option<RawDisplayHandle>) -> VkResult<InstanceParts> {
+fn create_instance(
+    desc: &ContextDesc,
+    display: Option<RawDisplayHandle>,
+) -> VkResult<InstanceParts> {
     // SAFETY: loading the system Vulkan loader; its initialization has no preconditions.
     let entry = unsafe { ash::Entry::load() }.map_err(|e| VkError::Loading(e.to_string()))?;
 
@@ -307,17 +326,27 @@ fn create_instance(desc: &ContextDesc, display: Option<RawDisplayHandle>) -> VkR
     let version = unsafe { entry.try_enumerate_instance_version() }
         .ctx("query instance version")?
         .unwrap_or(vk::API_VERSION_1_0);
-    let (major, minor) = (vk::api_version_major(version), vk::api_version_minor(version));
+    let (major, minor) = (
+        vk::api_version_major(version),
+        vk::api_version_minor(version),
+    );
     if (major, minor) < (1, 3) {
         return Err(VkError::UnsupportedVersion(major, minor));
     }
 
     // SAFETY: plain queries.
     let layers = unsafe { entry.enumerate_instance_layer_properties() }.ctx("enumerate layers")?;
-    let extensions =
-        unsafe { entry.enumerate_instance_extension_properties(None) }.ctx("enumerate instance extensions")?;
-    let has_layer = layers.iter().any(|l| l.layer_name_as_c_str() == Ok(VALIDATION_LAYER));
-    let has_ext = |name: &CStr| extensions.iter().any(|e| e.extension_name_as_c_str() == Ok(name));
+    // SAFETY: plain query.
+    let extensions = unsafe { entry.enumerate_instance_extension_properties(None) }
+        .ctx("enumerate instance extensions")?;
+    let has_layer = layers
+        .iter()
+        .any(|l| l.layer_name_as_c_str() == Ok(VALIDATION_LAYER));
+    let has_ext = |name: &CStr| {
+        extensions
+            .iter()
+            .any(|e| e.extension_name_as_c_str() == Ok(name))
+    };
 
     let validation = match desc.validation.resolve() {
         Validation::Required if !has_layer => return Err(VkError::ValidationUnavailable),
@@ -344,8 +373,11 @@ fn create_instance(desc: &ContextDesc, display: Option<RawDisplayHandle>) -> VkR
         ext_names.push(ash::khr::portability_enumeration::NAME.as_ptr());
         flags |= vk::InstanceCreateFlags::ENUMERATE_PORTABILITY_KHR;
     }
-    let layer_names: Vec<*const c_char> =
-        if validation { vec![VALIDATION_LAYER.as_ptr()] } else { Vec::new() };
+    let layer_names: Vec<*const c_char> = if validation {
+        vec![VALIDATION_LAYER.as_ptr()]
+    } else {
+        Vec::new()
+    };
 
     let app_name = CString::new(desc.app_name.replace('\0', "")).unwrap_or_default();
     let app_info = vk::ApplicationInfo::default()
@@ -382,9 +414,18 @@ fn create_instance(desc: &ContextDesc, display: Option<RawDisplayHandle>) -> VkR
         None
     };
     let validation_active = debug.is_some();
-    tracing::info!(validation = validation_active, "Vulkan {major}.{minor} instance created");
+    tracing::info!(
+        validation = validation_active,
+        "Vulkan {major}.{minor} instance created"
+    );
     let surface_fn = ash::khr::surface::Instance::new(&entry, &instance);
-    Ok(InstanceParts { entry, instance, debug, debug_state, surface_fn })
+    Ok(InstanceParts {
+        entry,
+        instance,
+        debug,
+        debug_state,
+        surface_fn,
+    })
 }
 
 struct DeviceParts {
@@ -450,8 +491,9 @@ fn create_device(
     if c.portability_subset {
         ext_names.push(PORTABILITY_SUBSET.as_ptr());
     }
-    let mut features13 =
-        vk::PhysicalDeviceVulkan13Features::default().dynamic_rendering(true).synchronization2(true);
+    let mut features13 = vk::PhysicalDeviceVulkan13Features::default()
+        .dynamic_rendering(true)
+        .synchronization2(true);
     let mut features = vk::PhysicalDeviceFeatures2::default()
         .features(vk::PhysicalDeviceFeatures::default().sampler_anisotropy(c.anisotropy))
         .push_next(&mut features13);
@@ -544,11 +586,21 @@ fn evaluate(
     // SAFETY: plain queries on a valid physical device.
     unsafe { instance.get_physical_device_properties2(pd, &mut props2) };
     let props = props2.properties;
-    let name = props.device_name_as_c_str().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default();
+    let name = props
+        .device_name_as_c_str()
+        .map(|s| s.to_string_lossy().into_owned())
+        .unwrap_or_default();
     let v = props.api_version;
-    let api_version = (vk::api_version_major(v), vk::api_version_minor(v), vk::api_version_patch(v));
+    let api_version = (
+        vk::api_version_major(v),
+        vk::api_version_minor(v),
+        vk::api_version_patch(v),
+    );
     if (api_version.0, api_version.1) < (1, 3) {
-        return Err(format!("{name}: supports Vulkan {}.{} only", api_version.0, api_version.1));
+        return Err(format!(
+            "{name}: supports Vulkan {}.{} only",
+            api_version.0, api_version.1
+        ));
     }
 
     let mut f13 = vk::PhysicalDeviceVulkan13Features::default();
@@ -557,7 +609,9 @@ fn evaluate(
     unsafe { instance.get_physical_device_features2(pd, &mut f2) };
     let anisotropy = f2.features.sampler_anisotropy == vk::TRUE;
     if f13.dynamic_rendering != vk::TRUE || f13.synchronization2 != vk::TRUE {
-        return Err(format!("{name}: missing dynamicRendering or synchronization2"));
+        return Err(format!(
+            "{name}: missing dynamicRendering or synchronization2"
+        ));
     }
 
     // SAFETY: plain query.
@@ -577,8 +631,12 @@ fn evaluate(
         .map(|(i, _)| i as u32)
         .find(|&i| match surface {
             // SAFETY: plain query with a valid surface.
-            Some(s) => unsafe { parts.surface_fn.get_physical_device_surface_support(pd, i, s) }
-                .unwrap_or(false),
+            Some(s) => unsafe {
+                parts
+                    .surface_fn
+                    .get_physical_device_surface_support(pd, i, s)
+            }
+            .unwrap_or(false),
             None => true,
         })
         .ok_or_else(|| format!("{name}: no graphics queue that can present"))?;
@@ -600,8 +658,14 @@ fn evaluate(
     if preferred.is_some_and(|p| name.to_lowercase().contains(&p.to_lowercase())) {
         score += 100_000;
     }
-    let driver_name = driver.driver_name_as_c_str().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default();
-    let driver_info = driver.driver_info_as_c_str().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default();
+    let driver_name = driver
+        .driver_name_as_c_str()
+        .map(|s| s.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    let driver_info = driver
+        .driver_info_as_c_str()
+        .map(|s| s.to_string_lossy().into_owned())
+        .unwrap_or_default();
     Ok(Candidate {
         physical_device: pd,
         queue_family,

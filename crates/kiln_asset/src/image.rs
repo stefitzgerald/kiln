@@ -35,7 +35,12 @@ impl Image {
     /// Image filled with one color.
     pub fn solid(width: u32, height: u32, rgba: [u8; 4], color_space: ColorSpace) -> Self {
         let data = rgba.repeat((width * height) as usize);
-        Self { width, height, data, color_space }
+        Self {
+            width,
+            height,
+            data,
+            color_space,
+        }
     }
 
     /// Two-color checkerboard with `cells`×`cells` squares.
@@ -44,10 +49,19 @@ impl Image {
         let mut data = Vec::with_capacity((size * size * 4) as usize);
         for y in 0..size {
             for x in 0..size {
-                data.extend_from_slice(if (x / cell + y / cell) % 2 == 0 { &a } else { &b });
+                data.extend_from_slice(if (x / cell + y / cell).is_multiple_of(2) {
+                    &a
+                } else {
+                    &b
+                });
             }
         }
-        Self { width: size, height: size, data, color_space: ColorSpace::Srgb }
+        Self {
+            width: size,
+            height: size,
+            data,
+            color_space: ColorSpace::Srgb,
+        }
     }
 
     /// `true` if the data length matches the dimensions.
@@ -60,6 +74,11 @@ impl Image {
     /// RGBA of the pixel at `(x, y)`.
     pub fn pixel(&self, x: u32, y: u32) -> [u8; 4] {
         let i = (y as usize * self.width as usize + x as usize) * 4;
-        [self.data[i], self.data[i + 1], self.data[i + 2], self.data[i + 3]]
+        [
+            self.data[i],
+            self.data[i + 1],
+            self.data[i + 2],
+            self.data[i + 3],
+        ]
     }
 }

@@ -56,7 +56,9 @@ pub struct Assets<T> {
 
 impl<T> Default for Assets<T> {
     fn default() -> Self {
-        Self { pool: kiln_core::HandlePool::new() }
+        Self {
+            pool: kiln_core::HandlePool::new(),
+        }
     }
 }
 
@@ -122,16 +124,23 @@ impl AssetServer {
     pub fn load_gltf(&mut self, path: impl AsRef<Path>) -> Result<Handle<GltfAsset>, AssetError> {
         let path = path.as_ref();
         let canonical = std::fs::canonicalize(path).map_err(|e| match e.kind() {
-            std::io::ErrorKind::NotFound => AssetError::NotFound { path: path.to_owned() },
-            _ => AssetError::Io { path: path.to_owned(), source: e },
+            std::io::ErrorKind::NotFound => AssetError::NotFound {
+                path: path.to_owned(),
+            },
+            _ => AssetError::Io {
+                path: path.to_owned(),
+                source: e,
+            },
         })?;
-        if let Some(&handle) = self.by_path.get(&canonical) {
-            if self.gltfs.get(handle).is_some() {
-                return Ok(handle);
-            }
+        if let Some(&handle) = self.by_path.get(&canonical)
+            && self.gltfs.get(handle).is_some()
+        {
+            return Ok(handle);
         }
-        let bytes = std::fs::read(&canonical)
-            .map_err(|e| AssetError::Io { path: path.to_owned(), source: e })?;
+        let bytes = std::fs::read(&canonical).map_err(|e| AssetError::Io {
+            path: path.to_owned(),
+            source: e,
+        })?;
         let origin = path.display().to_string();
         let asset = gltf_loader::load(&bytes, canonical.parent(), &origin, self)?;
         let handle = self.gltfs.add(asset);

@@ -50,7 +50,9 @@ impl Access {
     pub fn add_read<T: 'static>(&mut self) -> Result<(), QueryError> {
         let id = TypeId::of::<T>();
         if self.writes.contains(&id) {
-            return Err(QueryError::ConflictingAccess { component: std::any::type_name::<T>() });
+            return Err(QueryError::ConflictingAccess {
+                component: std::any::type_name::<T>(),
+            });
         }
         self.reads.push(id);
         Ok(())
@@ -60,7 +62,9 @@ impl Access {
     pub fn add_write<T: 'static>(&mut self) -> Result<(), QueryError> {
         let id = TypeId::of::<T>();
         if self.writes.contains(&id) || self.reads.contains(&id) {
-            return Err(QueryError::ConflictingAccess { component: std::any::type_name::<T>() });
+            return Err(QueryError::ConflictingAccess {
+                component: std::any::type_name::<T>(),
+            });
         }
         self.writes.push(id);
         Ok(())
@@ -76,11 +80,17 @@ pub struct WorldPtr<'w> {
 
 impl<'w> WorldPtr<'w> {
     pub(crate) fn from_mut(world: &'w mut World) -> Self {
-        Self { ptr: world, _marker: PhantomData }
+        Self {
+            ptr: world,
+            _marker: PhantomData,
+        }
     }
 
     pub(crate) fn from_ref(world: &'w World) -> Self {
-        Self { ptr: world as *const World as *mut World, _marker: PhantomData }
+        Self {
+            ptr: world as *const World as *mut World,
+            _marker: PhantomData,
+        }
     }
 
     /// # Safety
@@ -100,14 +110,18 @@ impl<'w> WorldPtr<'w> {
 
     fn storage<T: Component>(self) -> Option<*const SparseSet<T>> {
         // SAFETY: only a short-lived shared borrow used to locate the storage.
-        unsafe { self.world() }.storage::<T>().map(|s| s as *const _)
+        unsafe { self.world() }
+            .storage::<T>()
+            .map(|s| s as *const _)
     }
 
     /// # Safety
     /// See [`WorldPtr::world_mut`].
     unsafe fn storage_mut<T: Component>(self) -> Option<*mut SparseSet<T>> {
         // SAFETY: guaranteed by the caller.
-        unsafe { self.world_mut() }.storage_mut::<T>().map(|s| s as *mut _)
+        unsafe { self.world_mut() }
+            .storage_mut::<T>()
+            .map(|s| s as *mut _)
     }
 }
 
@@ -479,7 +493,13 @@ impl<'w, D: QueryData, F: QueryFilter> QueryIter<'w, D, F> {
             },
             None => Candidates::Borrowed(&[]),
         };
-        Self { fetch, filter, candidates, pos: 0, _marker: PhantomData }
+        Self {
+            fetch,
+            filter,
+            candidates,
+            pos: 0,
+            _marker: PhantomData,
+        }
     }
 }
 
@@ -493,10 +513,10 @@ impl<'w, D: QueryData, F: QueryFilter> Iterator for QueryIter<'w, D, F> {
             // SAFETY: candidates are unique entities, so every mutable item is handed out at
             // most once; storages stay valid for 'w.
             unsafe {
-                if F::matches(self.filter, entity) {
-                    if let Some(item) = D::get(fetch, entity) {
-                        return Some(item);
-                    }
+                if F::matches(self.filter, entity)
+                    && let Some(item) = D::get(fetch, entity)
+                {
+                    return Some(item);
                 }
             }
         }

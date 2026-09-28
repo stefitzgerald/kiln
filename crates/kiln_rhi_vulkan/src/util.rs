@@ -36,12 +36,18 @@ pub fn image_barrier(
         )];
     // SAFETY: the caller records into a command buffer in the recording state.
     unsafe {
-        device.cmd_pipeline_barrier2(cmd, &vk::DependencyInfo::default().image_memory_barriers(&barrier))
+        device.cmd_pipeline_barrier2(
+            cmd,
+            &vk::DependencyInfo::default().image_memory_barriers(&barrier),
+        )
     };
 }
 
 /// Create a shader module from SPIR-V words.
-pub fn create_shader_module(device: &ash::Device, words: &[u32]) -> Result<vk::ShaderModule, vk::Result> {
+pub fn create_shader_module(
+    device: &ash::Device,
+    words: &[u32],
+) -> Result<vk::ShaderModule, vk::Result> {
     // SAFETY: `words` is valid SPIR-V produced by the build script.
     unsafe { device.create_shader_module(&vk::ShaderModuleCreateInfo::default().code(words), None) }
 }

@@ -92,7 +92,10 @@ pub struct FixedTime {
 impl FixedTime {
     /// Fixed state ticking at `hz`.
     pub fn from_hz(hz: u32) -> Self {
-        Self { clock: FixedClock::from_hz(hz), time: Time::default() }
+        Self {
+            clock: FixedClock::from_hz(hz),
+            time: Time::default(),
+        }
     }
 
     /// Length of one fixed step.
@@ -236,7 +239,14 @@ impl App {
         F: FnMut(&mut World) + Send + 'static,
     {
         let name = type_name::<F>().to_owned();
-        self.schedule.stages.entry(stage).or_default().push(SystemEntry { name, run: Box::new(system) });
+        self.schedule
+            .stages
+            .entry(stage)
+            .or_default()
+            .push(SystemEntry {
+                name,
+                run: Box::new(system),
+            });
         self
     }
 
@@ -279,7 +289,9 @@ impl App {
     /// (clamped to [`App::MAX_DELTA`]).
     pub fn update(&mut self) {
         let now = Instant::now();
-        let dt = self.last_update.map_or(Duration::ZERO, |t| (now - t).min(Self::MAX_DELTA));
+        let dt = self
+            .last_update
+            .map_or(Duration::ZERO, |t| (now - t).min(Self::MAX_DELTA));
         self.last_update = Some(now);
         self.update_with_delta(dt);
     }
@@ -318,7 +330,11 @@ impl App {
 
     /// The first pending exit request, if any.
     pub fn exit_requested(&self) -> Option<AppExit> {
-        self.world.resource::<Events<AppExit>>()?.iter().next().copied()
+        self.world
+            .resource::<Events<AppExit>>()?
+            .iter()
+            .next()
+            .copied()
     }
 
     /// Run the app until it exits, using the configured runner (or a headless loop).
@@ -371,7 +387,8 @@ mod tests {
             }
         }
         let mut app = App::new();
-        app.add_plugin(Named("a", log.clone())).add_plugin(Named("b", log.clone()));
+        app.add_plugin(Named("a", log.clone()))
+            .add_plugin(Named("b", log.clone()));
         let err = app.try_add_plugin(Named("a", log.clone())).unwrap_err();
         assert_eq!(err, AppError::DuplicatePlugin("a".into()));
         assert!(err.to_string().contains("already added"));
@@ -396,7 +413,9 @@ mod tests {
     fn tc_app_02_startup_runs_once() {
         let mut app = App::new();
         app.init_resource::<Counter>();
-        app.add_system(Stage::Startup, |w| w.resource_mut::<Counter>().unwrap().0 += 1);
+        app.add_system(Stage::Startup, |w| {
+            w.resource_mut::<Counter>().unwrap().0 += 1
+        });
         for _ in 0..10 {
             app.update_with_delta(FRAME);
             app.end_frame();
@@ -410,7 +429,9 @@ mod tests {
     fn tc_app_03_fixed_update_count() {
         let mut app = App::new();
         app.init_resource::<Counter>();
-        app.add_system(Stage::FixedUpdate, |w| w.resource_mut::<Counter>().unwrap().0 += 1);
+        app.add_system(Stage::FixedUpdate, |w| {
+            w.resource_mut::<Counter>().unwrap().0 += 1
+        });
         app.update_with_delta(Duration::from_millis(100));
         assert_eq!(app.world.resource::<Counter>().unwrap().0, 6);
         let fixed = app.world.resource::<FixedTime>().unwrap();

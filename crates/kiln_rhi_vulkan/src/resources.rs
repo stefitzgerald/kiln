@@ -28,7 +28,10 @@ pub struct Buffer {
 
 impl std::fmt::Debug for Buffer {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Buffer").field("raw", &self.raw).field("size", &self.size).finish()
+        f.debug_struct("Buffer")
+            .field("raw", &self.raw)
+            .field("size", &self.size)
+            .finish()
     }
 }
 
@@ -36,7 +39,10 @@ impl Buffer {
     /// Create a buffer.
     pub fn new(ctx: &GpuContext, desc: &BufferDesc<'_>) -> VkResult<Self> {
         if desc.size == 0 {
-            return Err(VkError::InvalidArgument(format!("buffer `{}` has size 0", desc.name)));
+            return Err(VkError::InvalidArgument(format!(
+                "buffer `{}` has size 0",
+                desc.name
+            )));
         }
         let device = ctx.device();
         let info = vk::BufferCreateInfo::default()
@@ -63,13 +69,23 @@ impl Buffer {
             }
         };
         // SAFETY: memory and offset come from a live allocation sized for this buffer.
-        if let Err(e) = unsafe { device.bind_buffer_memory(raw, allocation.memory(), allocation.offset()) } {
+        let bound =
+            unsafe { device.bind_buffer_memory(raw, allocation.memory(), allocation.offset()) };
+        if let Err(e) = bound {
             // SAFETY: unused buffer.
             unsafe { device.destroy_buffer(raw, None) };
             let _ = ctx.allocator().free(allocation);
-            return Err(VkError::Api { context: "bind buffer memory", result: e });
+            return Err(VkError::Api {
+                context: "bind buffer memory",
+                result: e,
+            });
         }
-        Ok(Self { ctx: ctx.clone(), raw, allocation: Some(allocation), size: desc.size })
+        Ok(Self {
+            ctx: ctx.clone(),
+            raw,
+            allocation: Some(allocation),
+            size: desc.size,
+        })
     }
 
     /// Create a device-local buffer initialized with `data` via a staging copy.
@@ -80,23 +96,32 @@ impl Buffer {
         data: &[u8],
     ) -> VkResult<Self> {
         let size = data.len() as u64;
-        let mut staging = Buffer::new(ctx, &BufferDesc {
-            name: "staging",
-            size,
-            usage: vk::BufferUsageFlags::TRANSFER_SRC,
-            location: MemoryLocation::CpuToGpu,
-        })?;
+        let mut staging = Buffer::new(
+            ctx,
+            &BufferDesc {
+                name: "staging",
+                size,
+                usage: vk::BufferUsageFlags::TRANSFER_SRC,
+                location: MemoryLocation::CpuToGpu,
+            },
+        )?;
         staging.write(0, data)?;
-        let buffer = Buffer::new(ctx, &BufferDesc {
-            name,
-            size,
-            usage: usage | vk::BufferUsageFlags::TRANSFER_DST,
-            location: MemoryLocation::GpuOnly,
-        })?;
+        let buffer = Buffer::new(
+            ctx,
+            &BufferDesc {
+                name,
+                size,
+                usage: usage | vk::BufferUsageFlags::TRANSFER_DST,
+                location: MemoryLocation::GpuOnly,
+            },
+        )?;
         ctx.immediate_submit(|cmd| {
             let region = [vk::BufferCopy::default().size(size)];
             // SAFETY: both buffers are live and large enough.
-            unsafe { ctx.device().cmd_copy_buffer(cmd, staging.raw, buffer.raw, &region) };
+            unsafe {
+                ctx.device()
+                    .cmd_copy_buffer(cmd, staging.raw, buffer.raw, &region)
+            };
         })?;
         Ok(buffer)
     }
@@ -131,7 +156,12 @@ impl Buffer {
         let end = start
             .checked_add(data.len())
             .filter(|&e| e as u64 <= size)
-            .ok_or_else(|| VkError::InvalidArgument(format!("write of {} bytes at {offset} exceeds {size}", data.len())))?;
+            .ok_or_else(|| {
+                VkError::InvalidArgument(format!(
+                    "write of {} bytes at {offset} exceeds {size}",
+                    data.len()
+                ))
+            })?;
         mapped[start..end].copy_from_slice(data);
         Ok(())
     }
@@ -142,10 +172,10 @@ impl Drop for Buffer {
         // SAFETY: owners guarantee the GPU no longer uses the buffer (they wait on the frame
         // fence or device idle before dropping).
         unsafe { self.ctx.device().destroy_buffer(self.raw, None) };
-        if let Some(a) = self.allocation.take() {
-            if let Err(e) = self.ctx.allocator().free(a) {
-                tracing::error!("failed to free buffer memory: {e}");
-            }
+        if let Some(a) = self.allocation.take()
+            && let Err(e) = self.ctx.allocator().free(a)
+        {
+            tracing::error!("failed to free buffer memory: {e}");
         }
     }
 }
@@ -192,13 +222,20 @@ impl Texture {
     /// Create an uninitialized image.
     pub fn new(ctx: &GpuContext, desc: &TextureDesc<'_>) -> VkResult<Self> {
         if desc.extent.width == 0 || desc.extent.height == 0 {
-            return Err(VkError::InvalidArgument(format!("texture `{}` has zero extent", desc.name)));
+            return Err(VkError::InvalidArgument(format!(
+                "texture `{}` has zero extent",
+                desc.name
+            )));
         }
         let device = ctx.device();
         let info = vk::ImageCreateInfo::default()
             .image_type(vk::ImageType::TYPE_2D)
             .format(desc.format)
-            .extent(vk::Extent3D { width: desc.extent.width, height: desc.extent.height, depth: 1 })
+            .extent(vk::Extent3D {
+                width: desc.extent.width,
+                height: desc.extent.height,
+                depth: 1,
+            })
             .mip_levels(desc.mip_levels.max(1))
             .array_layers(1)
             .samples(vk::SampleCountFlags::TYPE_1)
@@ -229,10 +266,15 @@ impl Texture {
             unsafe { device.destroy_image(raw, None) };
             let _ = ctx.allocator().free(allocation);
         };
-        // SAFETY: memory from a live allocation sized for this image.
-        if let Err(e) = unsafe { device.bind_image_memory(raw, allocation.memory(), allocation.offset()) } {
+        // SAFETY: memory and offset come from a live allocation sized for this image.
+        let bound =
+            unsafe { device.bind_image_memory(raw, allocation.memory(), allocation.offset()) };
+        if let Err(e) = bound {
             cleanup(allocation);
-            return Err(VkError::Api { context: "bind image memory", result: e });
+            return Err(VkError::Api {
+                context: "bind image memory",
+                result: e,
+            });
         }
         let view_info = vk::ImageViewCreateInfo::default()
             .image(raw)
@@ -249,7 +291,10 @@ impl Texture {
             Ok(v) => v,
             Err(e) => {
                 cleanup(allocation);
-                return Err(VkError::Api { context: "create image view", result: e });
+                return Err(VkError::Api {
+                    context: "create image view",
+                    result: e,
+                });
             }
         };
         Ok(Self {
@@ -280,70 +325,138 @@ impl Texture {
                 pixels.len()
             )));
         }
-        let format = if srgb { vk::Format::R8G8B8A8_SRGB } else { vk::Format::R8G8B8A8_UNORM };
+        let format = if srgb {
+            vk::Format::R8G8B8A8_SRGB
+        } else {
+            vk::Format::R8G8B8A8_UNORM
+        };
         // SAFETY: plain query.
         let props = unsafe {
-            ctx.instance().get_physical_device_format_properties(ctx.physical_device(), format)
+            ctx.instance()
+                .get_physical_device_format_properties(ctx.physical_device(), format)
         };
         let can_blit = props.optimal_tiling_features.contains(
             vk::FormatFeatureFlags::BLIT_SRC
                 | vk::FormatFeatureFlags::BLIT_DST
                 | vk::FormatFeatureFlags::SAMPLED_IMAGE_FILTER_LINEAR,
         );
-        let mip_levels = if can_blit { 32 - width.max(height).max(1).leading_zeros() } else { 1 };
+        let mip_levels = if can_blit {
+            32 - width.max(height).max(1).leading_zeros()
+        } else {
+            1
+        };
 
-        let mut staging = Buffer::new(ctx, &BufferDesc {
-            name: "texture staging",
-            size: pixels.len() as u64,
-            usage: vk::BufferUsageFlags::TRANSFER_SRC,
-            location: MemoryLocation::CpuToGpu,
-        })?;
+        let mut staging = Buffer::new(
+            ctx,
+            &BufferDesc {
+                name: "texture staging",
+                size: pixels.len() as u64,
+                usage: vk::BufferUsageFlags::TRANSFER_SRC,
+                location: MemoryLocation::CpuToGpu,
+            },
+        )?;
         staging.write(0, pixels)?;
-        let texture = Texture::new(ctx, &TextureDesc {
-            name,
-            extent: vk::Extent2D { width, height },
-            format,
-            usage: vk::ImageUsageFlags::SAMPLED
-                | vk::ImageUsageFlags::TRANSFER_DST
-                | vk::ImageUsageFlags::TRANSFER_SRC,
-            mip_levels,
-            aspect: vk::ImageAspectFlags::COLOR,
-        })?;
+        let texture = Texture::new(
+            ctx,
+            &TextureDesc {
+                name,
+                extent: vk::Extent2D { width, height },
+                format,
+                usage: vk::ImageUsageFlags::SAMPLED
+                    | vk::ImageUsageFlags::TRANSFER_DST
+                    | vk::ImageUsageFlags::TRANSFER_SRC,
+                mip_levels,
+                aspect: vk::ImageAspectFlags::COLOR,
+            },
+        )?;
 
         let device = ctx.device();
         ctx.immediate_submit(|cmd| {
             let image = texture.raw;
             let color = vk::ImageAspectFlags::COLOR;
             image_barrier(
-                device, cmd, image, color, 0..mip_levels,
-                (vk::ImageLayout::UNDEFINED, vk::PipelineStageFlags2::NONE, vk::AccessFlags2::NONE),
-                (vk::ImageLayout::TRANSFER_DST_OPTIMAL, vk::PipelineStageFlags2::COPY, vk::AccessFlags2::TRANSFER_WRITE),
+                device,
+                cmd,
+                image,
+                color,
+                0..mip_levels,
+                (
+                    vk::ImageLayout::UNDEFINED,
+                    vk::PipelineStageFlags2::NONE,
+                    vk::AccessFlags2::NONE,
+                ),
+                (
+                    vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+                    vk::PipelineStageFlags2::COPY,
+                    vk::AccessFlags2::TRANSFER_WRITE,
+                ),
             );
             let copy = [vk::BufferImageCopy::default()
-                .image_subresource(vk::ImageSubresourceLayers::default().aspect_mask(color).layer_count(1))
-                .image_extent(vk::Extent3D { width, height, depth: 1 })];
+                .image_subresource(
+                    vk::ImageSubresourceLayers::default()
+                        .aspect_mask(color)
+                        .layer_count(1),
+                )
+                .image_extent(vk::Extent3D {
+                    width,
+                    height,
+                    depth: 1,
+                })];
             // SAFETY: staging holds the full level-0 image; image is in TRANSFER_DST.
             unsafe {
-                device.cmd_copy_buffer_to_image(cmd, staging.raw(), image, vk::ImageLayout::TRANSFER_DST_OPTIMAL, &copy)
+                device.cmd_copy_buffer_to_image(
+                    cmd,
+                    staging.raw(),
+                    image,
+                    vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+                    &copy,
+                )
             };
             let (mut w, mut h) = (width as i32, height as i32);
             for level in 1..mip_levels {
                 image_barrier(
-                    device, cmd, image, color, level - 1..level,
-                    (vk::ImageLayout::TRANSFER_DST_OPTIMAL, vk::PipelineStageFlags2::TRANSFER, vk::AccessFlags2::TRANSFER_WRITE),
-                    (vk::ImageLayout::TRANSFER_SRC_OPTIMAL, vk::PipelineStageFlags2::BLIT, vk::AccessFlags2::TRANSFER_READ),
+                    device,
+                    cmd,
+                    image,
+                    color,
+                    level - 1..level,
+                    (
+                        vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+                        vk::PipelineStageFlags2::TRANSFER,
+                        vk::AccessFlags2::TRANSFER_WRITE,
+                    ),
+                    (
+                        vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
+                        vk::PipelineStageFlags2::BLIT,
+                        vk::AccessFlags2::TRANSFER_READ,
+                    ),
                 );
                 let (nw, nh) = ((w / 2).max(1), (h / 2).max(1));
                 let blit = [vk::ImageBlit::default()
-                    .src_subresource(vk::ImageSubresourceLayers::default().aspect_mask(color).mip_level(level - 1).layer_count(1))
+                    .src_subresource(
+                        vk::ImageSubresourceLayers::default()
+                            .aspect_mask(color)
+                            .mip_level(level - 1)
+                            .layer_count(1),
+                    )
                     .src_offsets([vk::Offset3D::default(), vk::Offset3D { x: w, y: h, z: 1 }])
-                    .dst_subresource(vk::ImageSubresourceLayers::default().aspect_mask(color).mip_level(level).layer_count(1))
+                    .dst_subresource(
+                        vk::ImageSubresourceLayers::default()
+                            .aspect_mask(color)
+                            .mip_level(level)
+                            .layer_count(1),
+                    )
                     .dst_offsets([vk::Offset3D::default(), vk::Offset3D { x: nw, y: nh, z: 1 }])];
                 // SAFETY: level-1 is TRANSFER_SRC, level is TRANSFER_DST.
                 unsafe {
                     device.cmd_blit_image(
-                        cmd, image, vk::ImageLayout::TRANSFER_SRC_OPTIMAL, image,
-                        vk::ImageLayout::TRANSFER_DST_OPTIMAL, &blit, vk::Filter::LINEAR,
+                        cmd,
+                        image,
+                        vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
+                        image,
+                        vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+                        &blit,
+                        vk::Filter::LINEAR,
                     )
                 };
                 (w, h) = (nw, nh);
@@ -351,15 +464,39 @@ impl Texture {
             // All levels but the last are TRANSFER_SRC now; the last is TRANSFER_DST.
             if mip_levels > 1 {
                 image_barrier(
-                    device, cmd, image, color, 0..mip_levels - 1,
-                    (vk::ImageLayout::TRANSFER_SRC_OPTIMAL, vk::PipelineStageFlags2::BLIT, vk::AccessFlags2::TRANSFER_READ),
-                    (vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL, vk::PipelineStageFlags2::FRAGMENT_SHADER, vk::AccessFlags2::SHADER_SAMPLED_READ),
+                    device,
+                    cmd,
+                    image,
+                    color,
+                    0..mip_levels - 1,
+                    (
+                        vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
+                        vk::PipelineStageFlags2::BLIT,
+                        vk::AccessFlags2::TRANSFER_READ,
+                    ),
+                    (
+                        vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
+                        vk::PipelineStageFlags2::FRAGMENT_SHADER,
+                        vk::AccessFlags2::SHADER_SAMPLED_READ,
+                    ),
                 );
             }
             image_barrier(
-                device, cmd, image, color, mip_levels - 1..mip_levels,
-                (vk::ImageLayout::TRANSFER_DST_OPTIMAL, vk::PipelineStageFlags2::TRANSFER, vk::AccessFlags2::TRANSFER_WRITE),
-                (vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL, vk::PipelineStageFlags2::FRAGMENT_SHADER, vk::AccessFlags2::SHADER_SAMPLED_READ),
+                device,
+                cmd,
+                image,
+                color,
+                mip_levels - 1..mip_levels,
+                (
+                    vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+                    vk::PipelineStageFlags2::TRANSFER,
+                    vk::AccessFlags2::TRANSFER_WRITE,
+                ),
+                (
+                    vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
+                    vk::PipelineStageFlags2::FRAGMENT_SHADER,
+                    vk::AccessFlags2::SHADER_SAMPLED_READ,
+                ),
             );
         })?;
         Ok(texture)
@@ -398,10 +535,10 @@ impl Drop for Texture {
             self.ctx.device().destroy_image_view(self.view, None);
             self.ctx.device().destroy_image(self.raw, None);
         }
-        if let Some(a) = self.allocation.take() {
-            if let Err(e) = self.ctx.allocator().free(a) {
-                tracing::error!("failed to free image memory: {e}");
-            }
+        if let Some(a) = self.allocation.take()
+            && let Err(e) = self.ctx.allocator().free(a)
+        {
+            tracing::error!("failed to free image memory: {e}");
         }
     }
 }

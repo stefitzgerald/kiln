@@ -17,7 +17,12 @@ pub struct Events<E> {
 
 impl<E> Default for Events<E> {
     fn default() -> Self {
-        Self { previous: Vec::new(), current: Vec::new(), previous_start: 0, count: 0 }
+        Self {
+            previous: Vec::new(),
+            current: Vec::new(),
+            previous_start: 0,
+            count: 0,
+        }
     }
 }
 
@@ -58,7 +63,10 @@ impl<E> Events<E> {
 
     /// A cursor that will only see events sent from now on.
     pub fn cursor_at_end(&self) -> EventCursor<E> {
-        EventCursor { next: self.count, _marker: std::marker::PhantomData }
+        EventCursor {
+            next: self.count,
+            _marker: std::marker::PhantomData,
+        }
     }
 }
 
@@ -71,13 +79,19 @@ pub struct EventCursor<E> {
 
 impl<E> Default for EventCursor<E> {
     fn default() -> Self {
-        Self { next: 0, _marker: std::marker::PhantomData }
+        Self {
+            next: 0,
+            _marker: std::marker::PhantomData,
+        }
     }
 }
 
 impl<E> Clone for EventCursor<E> {
     fn clone(&self) -> Self {
-        Self { next: self.next, _marker: std::marker::PhantomData }
+        Self {
+            next: self.next,
+            _marker: std::marker::PhantomData,
+        }
     }
 }
 

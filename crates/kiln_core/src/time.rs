@@ -75,7 +75,11 @@ impl FixedClock {
     /// Panics if `step` is zero.
     pub fn new(step: Duration) -> Self {
         assert!(!step.is_zero(), "fixed step must be non-zero");
-        Self { step, accumulator: Duration::ZERO, max_steps_per_frame: Self::DEFAULT_MAX_STEPS }
+        Self {
+            step,
+            accumulator: Duration::ZERO,
+            max_steps_per_frame: Self::DEFAULT_MAX_STEPS,
+        }
     }
 
     /// Clock ticking `hz` times per second (step = 1s / hz, truncated to whole nanoseconds).
@@ -136,16 +140,27 @@ mod tests {
     fn tc_core_03_fixed_steps_are_exact() {
         let mut clock = FixedClock::from_hz(60);
         assert_eq!(clock.accumulate(MS(50)), 3);
-        assert!(clock.remainder() < Duration::from_micros(1), "rem = {:?}", clock.remainder());
+        assert!(
+            clock.remainder() < Duration::from_micros(1),
+            "rem = {:?}",
+            clock.remainder()
+        );
     }
 
     /// TC-CORE-04: a 5 s hitch is clamped to the max step count and the backlog discarded.
     #[test]
     fn tc_core_04_hitch_is_clamped() {
         let mut clock = FixedClock::from_hz(60);
-        assert_eq!(clock.accumulate(Duration::from_secs(5)), FixedClock::DEFAULT_MAX_STEPS);
+        assert_eq!(
+            clock.accumulate(Duration::from_secs(5)),
+            FixedClock::DEFAULT_MAX_STEPS
+        );
         assert!(clock.remainder() < clock.step());
-        assert_eq!(clock.accumulate(Duration::ZERO), 0, "backlog must not carry over");
+        assert_eq!(
+            clock.accumulate(Duration::ZERO),
+            0,
+            "backlog must not carry over"
+        );
     }
 
     #[test]

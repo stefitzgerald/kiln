@@ -33,12 +33,20 @@ fn compile(path: &Path, out_dir: &Path) {
 
     // The Vulkan backend flips Y with a negative viewport, so naga must not also flip it.
     let mut options = spv::Options::default();
-    options.flags.remove(spv::WriterFlags::ADJUST_COORDINATE_SPACE);
+    options
+        .flags
+        .remove(spv::WriterFlags::ADJUST_COORDINATE_SPACE);
     options.lang_version = (1, 3);
 
-    let stem = path.file_stem().and_then(|s| s.to_str()).expect("utf-8 file name");
+    let stem = path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .expect("utf-8 file name");
     for ep in &module.entry_points {
-        let pipeline = spv::PipelineOptions { shader_stage: ep.stage, entry_point: ep.name.clone() };
+        let pipeline = spv::PipelineOptions {
+            shader_stage: ep.stage,
+            entry_point: ep.name.clone(),
+        };
         let words = spv::write_vec(&module, &info, &options, Some(&pipeline))
             .unwrap_or_else(|e| panic!("{name}: SPIR-V generation for `{}` failed: {e}", ep.name));
         let bytes: Vec<u8> = words.iter().flat_map(|w| w.to_le_bytes()).collect();

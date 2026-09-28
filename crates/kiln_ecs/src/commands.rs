@@ -14,7 +14,9 @@ pub struct Commands {
 
 impl std::fmt::Debug for Commands {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Commands").field("len", &self.queue.len()).finish()
+        f.debug_struct("Commands")
+            .field("len", &self.queue.len())
+            .finish()
     }
 }
 

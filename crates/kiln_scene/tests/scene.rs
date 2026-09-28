@@ -1,5 +1,7 @@
 //! Scene acceptance tests (TC-SCN-*, TC-AST-07). See docs/testing/M0-test-plan.md.
 
+#![allow(clippy::unwrap_used, clippy::chunks_exact_to_as_chunks)]
+
 use kiln_app::{App, Stage};
 use kiln_asset::AssetServer;
 use kiln_ecs::{Entity, World};
@@ -40,7 +42,11 @@ fn tc_scn_02_rotation_and_scale_compose() {
 
     // Hand computation: scale (1,0,0) by 2 → (2,0,0); rotate +90° about Y → (0,0,-2);
     // translate by (0,0,-3) → (0,0,-5).
-    assert!(pos(&w, child).abs_diff_eq(Vec3::new(0.0, 0.0, -5.0), 1e-5), "{}", pos(&w, child));
+    assert!(
+        pos(&w, child).abs_diff_eq(Vec3::new(0.0, 0.0, -5.0), 1e-5),
+        "{}",
+        pos(&w, child)
+    );
     let expected = parent_tf.to_matrix() * Mat4::from_translation(Vec3::X);
     assert!(Mat4::from(global(&w, child)).abs_diff_eq(expected, 1e-5));
 }
@@ -60,7 +66,10 @@ fn tc_scn_03_reparent_updates_both_sides() {
     propagate_transforms(&mut w);
     assert!(pos(&w, child).abs_diff_eq(Vec3::new(-10.0, 1.0, 0.0), 1e-6));
     assert_eq!(w.get::<Parent>(child), Some(&Parent(b)));
-    assert!(w.get::<Children>(a).is_none(), "old parent's Children cleaned up");
+    assert!(
+        w.get::<Children>(a).is_none(),
+        "old parent's Children cleaned up"
+    );
     assert_eq!(w.get::<Children>(b), Some(&Children(vec![child])));
 
     remove_parent(&mut w, child);
@@ -79,8 +88,20 @@ fn tc_scn_04_cycles_are_rejected() {
     set_parent(&mut w, b, a).unwrap();
     set_parent(&mut w, c, b).unwrap();
 
-    assert_eq!(set_parent(&mut w, a, c), Err(HierarchyError::Cycle { child: a, parent: c }));
-    assert_eq!(set_parent(&mut w, a, a), Err(HierarchyError::Cycle { child: a, parent: a }));
+    assert_eq!(
+        set_parent(&mut w, a, c),
+        Err(HierarchyError::Cycle {
+            child: a,
+            parent: c
+        })
+    );
+    assert_eq!(
+        set_parent(&mut w, a, a),
+        Err(HierarchyError::Cycle {
+            child: a,
+            parent: a
+        })
+    );
     // Unchanged.
     assert!(w.get::<Parent>(a).is_none());
     assert_eq!(w.get::<Children>(c), None);
@@ -88,7 +109,10 @@ fn tc_scn_04_cycles_are_rejected() {
 
     let dead = w.spawn(Transform::IDENTITY);
     w.despawn(dead);
-    assert_eq!(set_parent(&mut w, a, dead), Err(HierarchyError::NoSuchEntity(dead)));
+    assert_eq!(
+        set_parent(&mut w, a, dead),
+        Err(HierarchyError::NoSuchEntity(dead))
+    );
 }
 
 /// TC-SCN-05
@@ -109,7 +133,10 @@ fn tc_scn_05_recursive_despawn() {
     assert_eq!(despawn_recursive(&mut w, root), 7);
     assert!(all.iter().all(|e| !w.is_alive(*e)));
     assert!(w.is_alive(keep));
-    assert!(w.get::<Children>(keep).is_none(), "detached from surviving parent");
+    assert!(
+        w.get::<Children>(keep).is_none(),
+        "detached from surviving parent"
+    );
     assert_eq!(w.entity_count(), 1);
 }
 
@@ -167,7 +194,10 @@ fn camera_projection() {
     let vp = cam.view_projection(&at, 16.0 / 9.0);
     let clip = vp * Vec3::ZERO.extend(1.0);
     let ndc = clip.truncate() / clip.w;
-    assert!(ndc.x.abs() < 1e-6 && ndc.y.abs() < 1e-6, "origin is centered");
+    assert!(
+        ndc.x.abs() < 1e-6 && ndc.y.abs() < 1e-6,
+        "origin is centered"
+    );
     assert!(ndc.z > 0.0 && ndc.z < 1.0);
 }
 
@@ -206,7 +236,13 @@ fn tc_ast_07_spawn_gltf_scene_hierarchy() {
 fn spawn_errors() {
     let mut w = World::new();
     let bogus = kiln_asset::Handle::from_raw_parts(0, 0);
-    assert_eq!(spawn_gltf_scene(&mut w, bogus, None), Err(SceneError::NoAssetServer));
+    assert_eq!(
+        spawn_gltf_scene(&mut w, bogus, None),
+        Err(SceneError::NoAssetServer)
+    );
     w.insert_resource(AssetServer::new());
-    assert_eq!(spawn_gltf_scene(&mut w, bogus, None), Err(SceneError::NotLoaded(bogus)));
+    assert_eq!(
+        spawn_gltf_scene(&mut w, bogus, None),
+        Err(SceneError::NotLoaded(bogus))
+    );
 }

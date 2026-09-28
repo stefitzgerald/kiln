@@ -29,7 +29,9 @@ pub(crate) struct Pipelines {
 impl Pipelines {
     pub(crate) fn new(ctx: &GpuContext, color_format: vk::Format) -> Result<Self, RenderError> {
         let device = ctx.device();
-        let vk_err = |context: &'static str| move |result| RenderError::Vulkan(VkError::Api { context, result });
+        let vk_err = |context: &'static str| {
+            move |result| RenderError::Vulkan(VkError::Api { context, result })
+        };
 
         let frame_bindings = [
             vk::DescriptorSetLayoutBinding::default()
@@ -157,7 +159,9 @@ impl Pipelines {
             .vertex_attribute_descriptions(&attributes);
         let input_assembly = vk::PipelineInputAssemblyStateCreateInfo::default()
             .topology(vk::PrimitiveTopology::TRIANGLE_LIST);
-        let viewport = vk::PipelineViewportStateCreateInfo::default().viewport_count(1).scissor_count(1);
+        let viewport = vk::PipelineViewportStateCreateInfo::default()
+            .viewport_count(1)
+            .scissor_count(1);
         // With the negative-height viewport, COUNTER_CLOCKWISE matches the usual
         // "counter-clockwise in Y-up NDC is front-facing" convention (glTF, OpenGL).
         let raster = vk::PipelineRasterizationStateCreateInfo::default()

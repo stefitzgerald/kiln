@@ -27,7 +27,11 @@ impl Extent2d {
 
     /// Width / height (1.0 when empty).
     pub fn aspect(&self) -> f32 {
-        if self.is_empty() { 1.0 } else { self.width as f32 / self.height as f32 }
+        if self.is_empty() {
+            1.0
+        } else {
+            self.width as f32 / self.height as f32
+        }
     }
 }
 
@@ -95,7 +99,11 @@ impl Validation {
         if self != Validation::Auto {
             return self;
         }
-        match std::env::var("KILN_VALIDATION").ok().as_deref().map(str::trim) {
+        match std::env::var("KILN_VALIDATION")
+            .ok()
+            .as_deref()
+            .map(str::trim)
+        {
             Some("0" | "off" | "false") => Validation::Disabled,
             Some("1" | "on" | "true") => Validation::Enabled,
             Some("required") => Validation::Required,

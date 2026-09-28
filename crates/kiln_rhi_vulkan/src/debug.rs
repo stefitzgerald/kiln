@@ -60,17 +60,13 @@ unsafe extern "system" fn callback(
     };
     let validation = types.contains(vk::DebugUtilsMessageTypeFlagsEXT::VALIDATION);
     if severity.contains(vk::DebugUtilsMessageSeverityFlagsEXT::ERROR) {
-        if validation {
-            if let Some(s) = state {
-                s.errors.fetch_add(1, Ordering::Relaxed);
-            }
+        if validation && let Some(s) = state {
+            s.errors.fetch_add(1, Ordering::Relaxed);
         }
         tracing::error!(target: "vulkan", id = %id, "{message}");
     } else if severity.contains(vk::DebugUtilsMessageSeverityFlagsEXT::WARNING) {
-        if validation {
-            if let Some(s) = state {
-                s.warnings.fetch_add(1, Ordering::Relaxed);
-            }
+        if validation && let Some(s) = state {
+            s.warnings.fetch_add(1, Ordering::Relaxed);
         }
         tracing::warn!(target: "vulkan", id = %id, "{message}");
     } else if severity.contains(vk::DebugUtilsMessageSeverityFlagsEXT::INFO) {

@@ -1,22 +1,26 @@
 //! glTF import acceptance tests (TC-AST-*). See docs/testing/M0-test-plan.md.
 
+#![allow(clippy::unwrap_used, clippy::chunks_exact_to_as_chunks)]
+
 use std::path::PathBuf;
 
 use kiln_asset::{AssetError, AssetServer, ColorSpace};
 use kiln_math::Vec3;
 
 fn asset_path(name: &str) -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../tests/assets").join(name)
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../tests/assets")
+        .join(name)
 }
 
 /// Build a GLB container from a JSON document and a binary chunk.
 fn make_glb(json: &str, bin: &[u8]) -> Vec<u8> {
     let mut json = json.as_bytes().to_vec();
-    while json.len() % 4 != 0 {
+    while !json.len().is_multiple_of(4) {
         json.push(b' ');
     }
     let mut bin = bin.to_vec();
-    while bin.len() % 4 != 0 {
+    while !bin.len().is_multiple_of(4) {
         bin.push(0);
     }
     let total = 12 + 8 + json.len() + if bin.is_empty() { 0 } else { 8 + bin.len() };
@@ -38,7 +42,11 @@ fn make_glb(json: &str, bin: &[u8]) -> Vec<u8> {
 /// A single triangle without normals, placed under a three-level node hierarchy.
 fn triangle_hierarchy_glb() -> Vec<u8> {
     let positions: [[f32; 3]; 3] = [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]];
-    let bin: Vec<u8> = positions.iter().flatten().flat_map(|f| f.to_le_bytes()).collect();
+    let bin: Vec<u8> = positions
+        .iter()
+        .flatten()
+        .flat_map(|f| f.to_le_bytes())
+        .collect();
     let json = format!(
         r#"{{
         "asset": {{"version": "2.0"}},
@@ -68,14 +76,20 @@ fn tc_ast_01_box_glb() {
     let gltf = server.gltfs.get(h).unwrap();
     assert_eq!(gltf.meshes.len(), 1);
     assert_eq!(gltf.meshes[0].primitives.len(), 1);
-    let mesh = server.meshes.get(gltf.meshes[0].primitives[0].mesh).unwrap();
+    let mesh = server
+        .meshes
+        .get(gltf.meshes[0].primitives[0].mesh)
+        .unwrap();
     assert_eq!(mesh.vertex_count(), 24);
     assert_eq!(mesh.indices.len(), 36);
     let aabb = mesh.aabb().unwrap();
     assert!(aabb.min.abs_diff_eq(Vec3::splat(-0.5), 1e-6), "{aabb:?}");
     assert!(aabb.max.abs_diff_eq(Vec3::splat(0.5), 1e-6), "{aabb:?}");
     // Box.glb has a red-ish material and a two-node hierarchy.
-    let mat = server.materials.get(gltf.meshes[0].primitives[0].material).unwrap();
+    let mat = server
+        .materials
+        .get(gltf.meshes[0].primitives[0].material)
+        .unwrap();
     assert!(mat.base_color[0] > 0.5 && mat.base_color[1] < 0.5);
     assert_eq!(gltf.default_roots().len(), 1);
 }
@@ -108,7 +122,10 @@ fn tc_ast_04_corrupt_files_error_without_panicking() {
     let mut server = AssetServer::new();
     for cut in (0..good.len()).step_by(7) {
         let result = server.load_gltf_from_bytes(&good[..cut], None);
-        assert!(matches!(result, Err(AssetError::Parse { .. })), "truncated at {cut} accepted");
+        assert!(
+            matches!(result, Err(AssetError::Parse { .. })),
+            "truncated at {cut} accepted"
+        );
     }
     // Deterministic pseudo-random byte flips.
     let mut seed = 0x2545_f491_u32;
@@ -131,7 +148,9 @@ fn tc_ast_04_corrupt_files_error_without_panicking() {
         }
     }
     assert!(accepted < 300, "corruption was never detected");
-    let err = server.load_gltf_from_bytes(b"not a gltf", None).unwrap_err();
+    let err = server
+        .load_gltf_from_bytes(b"not a gltf", None)
+        .unwrap_err();
     assert!(err.to_string().contains("<memory>"));
 }
 
@@ -139,7 +158,9 @@ fn tc_ast_04_corrupt_files_error_without_panicking() {
 #[test]
 fn tc_ast_05_missing_normals_are_generated_flat() {
     let mut server = AssetServer::new();
-    let h = server.load_gltf_from_bytes(&triangle_hierarchy_glb(), None).unwrap();
+    let h = server
+        .load_gltf_from_bytes(&triangle_hierarchy_glb(), None)
+        .unwrap();
     let gltf = server.gltfs.get(h).unwrap();
     let prim = gltf.meshes[0].primitives[0];
     let mesh = server.meshes.get(prim.mesh).unwrap();
@@ -147,7 +168,10 @@ fn tc_ast_05_missing_normals_are_generated_flat() {
     for n in &mesh.normals {
         let n = Vec3::from(*n);
         assert!((n.length() - 1.0).abs() < 1e-6);
-        assert!(n.abs_diff_eq(Vec3::Z, 1e-6), "CCW triangle in XY faces +Z, got {n}");
+        assert!(
+            n.abs_diff_eq(Vec3::Z, 1e-6),
+            "CCW triangle in XY faces +Z, got {n}"
+        );
     }
     // No material in the file => shared default material.
     let mat = server.materials.get(prim.material).unwrap();
@@ -179,7 +203,9 @@ fn tc_ast_06_textured_cube() {
 #[test]
 fn tc_ast_07_node_hierarchy_is_preserved() {
     let mut server = AssetServer::new();
-    let h = server.load_gltf_from_bytes(&triangle_hierarchy_glb(), None).unwrap();
+    let h = server
+        .load_gltf_from_bytes(&triangle_hierarchy_glb(), None)
+        .unwrap();
     let gltf = server.gltfs.get(h).unwrap();
     assert_eq!(gltf.default_roots(), [0]);
     assert_eq!(gltf.nodes[0].children, [1]);

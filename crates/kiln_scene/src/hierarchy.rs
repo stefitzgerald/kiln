@@ -107,7 +107,9 @@ pub fn propagate_transforms(world: &mut World) {
         .map(|(e, _)| (e, Affine3A::IDENTITY))
         .collect();
     while let Some((e, parent_global)) = stack.pop() {
-        let local = world.get::<Transform>(e).map_or(Affine3A::IDENTITY, |t| t.to_affine());
+        let local = world
+            .get::<Transform>(e)
+            .map_or(Affine3A::IDENTITY, |t| t.to_affine());
         let global = parent_global * local;
         match world.get_mut::<GlobalTransform>(e) {
             Some(g) => g.0 = global,

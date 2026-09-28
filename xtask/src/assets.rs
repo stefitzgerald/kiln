@@ -30,7 +30,13 @@ pub(crate) fn generate(root: &Path) -> Result<(), String> {
     push(&f32s(mesh.positions.as_flattened()));
     push(&f32s(mesh.normals.as_flattened()));
     push(&f32s(mesh.uvs.as_flattened()));
-    push(&mesh.indices.iter().flat_map(|i| i.to_le_bytes()).collect::<Vec<_>>());
+    push(
+        &mesh
+            .indices
+            .iter()
+            .flat_map(|i| i.to_le_bytes())
+            .collect::<Vec<_>>(),
+    );
     push(&png);
 
     let aabb = mesh.aabb().ok_or("empty mesh")?;
@@ -91,11 +97,11 @@ pub(crate) fn generate(root: &Path) -> Result<(), String> {
 
 fn make_glb(json: &str, bin: &[u8]) -> Vec<u8> {
     let mut json = json.as_bytes().to_vec();
-    while json.len() % 4 != 0 {
+    while !json.len().is_multiple_of(4) {
         json.push(b' ');
     }
     let mut bin = bin.to_vec();
-    while bin.len() % 4 != 0 {
+    while !bin.len().is_multiple_of(4) {
         bin.push(0);
     }
     let total = 12 + 8 + json.len() + 8 + bin.len();
@@ -139,6 +145,9 @@ pub(crate) fn fetch(root: &Path) -> Result<(), String> {
             return Err(format!("download of {name} failed"));
         }
     }
-    println!("Sample models are in {} (see the model licenses at the source URLs).", dir.display());
+    println!(
+        "Sample models are in {} (see the model licenses at the source URLs).",
+        dir.display()
+    );
     Ok(())
 }

@@ -21,7 +21,9 @@ mod world;
 pub use commands::Commands;
 pub use entity::Entity;
 pub use events::{EventCursor, Events};
-pub use query::{Has, QueryData, QueryError, QueryFilter, QueryIter, ReadOnlyQueryData, With, Without};
+pub use query::{
+    Has, QueryData, QueryError, QueryFilter, QueryIter, ReadOnlyQueryData, With, Without,
+};
 pub use world::{EntityError, World};
 
 /// Data that can be attached to an entity.
