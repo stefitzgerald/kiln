@@ -10,8 +10,7 @@ political attacks are not tolerated.
 
 ## Reporting
 
-Report unacceptable behavior to the project maintainers at **TODO: conduct contact
-address**. All reports will be reviewed and investigated promptly and fairly, and the
+Report unacceptable behavior to the project maintainers at **admin@kiln.com**. All reports will be reviewed and investigated promptly and fairly, and the
 privacy of the reporter will be respected.
 
 Maintainers apply the Contributor Covenant's
